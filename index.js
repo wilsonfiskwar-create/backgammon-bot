@@ -8,7 +8,7 @@ const http = require('http');
 const { WebSocketServer } = require('ws');
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
-const { Backgammon } = require('./game');
+const { LongBackgammon } = require('./game');
 
 const app = express();
 const server = http.createServer(app);
@@ -30,7 +30,7 @@ const wsClients = new Map(); // ws -> { id, roomId, player }
 app.post('/api/create', (req, res) => {
   const playerId = uuidv4().slice(0, 8);
   const roomId = uuidv4().slice(0, 6);
-  const game = new Backgammon();
+  const game = new LongBackgammon();
 
   rooms.set(roomId, {
     id: roomId,
@@ -300,7 +300,7 @@ function handleWSMessage(ws, msg) {
 function handleWSCreateRoom(ws) {
   const client = wsClients.get(ws);
   const roomId = uuidv4().slice(0, 6);
-  const game = new Backgammon();
+  const game = new LongBackgammon();
   rooms.set(roomId, {
     id: roomId, players: [client.id], ws: [ws],
     playerColors: [1], game, state: 'waiting',

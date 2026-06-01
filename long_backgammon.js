@@ -298,11 +298,6 @@ class LongBackgammon {
   }
 
   // Get full state for display
-  // Virtual getter for backward compatibility with server
-  get board() {
-    return this.getState();
-  }
-
   getState() {
     return {
       white: [...this.white],
