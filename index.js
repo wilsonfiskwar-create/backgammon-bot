@@ -1,6 +1,6 @@
 // ========================================
 // НАРДЫ — Game Server
-// Express + WebSocket + Room Management
+// Express + HTTP API + WebSocket fallback
 // ========================================
 
 const express = require('express');
@@ -13,221 +13,100 @@ const { Backgammon } = require('./game');
 const app = express();
 const server = http.createServer(app);
 
-// Serve static files
-app.use(express.static(path.join(__dirname, '..', 'public')));
+app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Room management
-const rooms = new Map(); // roomId -> { players, game, state }
+const rooms = new Map(); // roomId -> { players, game, state, seq, events[] }
 
-// WebSocket server
+// WebSocket server (fallback)
 const wss = new WebSocketServer({ server });
+const wsClients = new Map(); // ws -> { id, roomId, player }
 
-// Client connections
-const clients = new Map(); // ws -> { id, roomId, player }
+// ============================================
+// HTTP API
+// ============================================
 
-wss.on('connection', (ws) => {
-  const clientId = uuidv4().slice(0, 8);
-  clients.set(ws, { id: clientId, roomId: null, player: null });
-
-  console.log(`[+] Client ${clientId} connected`);
-
-  ws.send(JSON.stringify({
-    type: 'connected',
-    clientId
-  }));
-
-  ws.on('message', (data) => {
-    try {
-      const msg = JSON.parse(data);
-      handleMessage(ws, msg);
-    } catch (e) {
-      console.error('[-] Invalid message:', e.message);
-    }
-  });
-
-  ws.on('close', () => {
-    const client = clients.get(ws);
-    console.log(`[-] Client ${client?.id} disconnected`);
-    if (client?.roomId) {
-      leaveRoom(ws, client.roomId);
-    }
-    clients.delete(ws);
-  });
-});
-
-function handleMessage(ws, msg) {
-  const client = clients.get(ws);
-  if (!client) return;
-
-  switch (msg.type) {
-    case 'create_room':
-      handleCreateRoom(ws);
-      break;
-    case 'join_room':
-      handleJoinRoom(ws, msg.roomId);
-      break;
-    case 'leave_room':
-      leaveRoom(ws, client.roomId);
-      break;
-    case 'roll_dice':
-      handleRollDice(ws);
-      break;
-    case 'make_move':
-      handleMakeMove(ws, msg.move);
-      break;
-    case 'get_moves':
-      handleGetMoves(ws);
-      break;
-    case 'chat':
-      handleChat(ws, msg.text);
-      break;
-    case 'rematch':
-      handleRematch(ws);
-      break;
-    case 'get_state':
-      handleGetState(ws);
-      break;
-    case 'list_rooms':
-      handleListRooms(ws);
-      break;
-    default:
-      ws.send(JSON.stringify({ type: 'error', message: 'Неизвестный тип сообщения' }));
-  }
-}
-
-function handleCreateRoom(ws) {
-  const client = clients.get(ws);
+app.post('/api/create', (req, res) => {
+  const playerId = uuidv4().slice(0, 8);
   const roomId = uuidv4().slice(0, 6);
-
   const game = new Backgammon();
 
   rooms.set(roomId, {
     id: roomId,
-    players: [client.id],
-    ws: [ws],
-    playerColors: [1], // White
+    players: [playerId],
+    playerSessions: [{ playerId, player: 1 }],
     game,
     state: 'waiting', // waiting, playing, finished
-    spectators: [],
-    turn: null
+    seq: 0,
+    events: []
   });
 
-  client.roomId = roomId;
-  client.player = 1;
+  console.log(`[HTTP] [+] Room ${roomId} created by ${playerId}`);
 
-  ws.send(JSON.stringify({
-    type: 'room_created',
-    roomId,
-    player: 1
-  }));
+  res.json({ roomId, playerId, player: 1 });
+});
 
-  console.log(`[+] Room ${roomId} created by ${client.id}`);
-}
-
-function handleJoinRoom(ws, roomId) {
-  const client = clients.get(ws);
+app.post('/api/join', (req, res) => {
+  const { roomId } = req.body;
   const room = rooms.get(roomId);
 
   if (!room) {
-    ws.send(JSON.stringify({ type: 'error', message: 'Комната не найдена' }));
-    return;
+    return res.status(404).json({ error: 'Комната не найдена' });
   }
 
   if (room.state !== 'waiting' || room.players.length >= 2) {
-    ws.send(JSON.stringify({ type: 'error', message: 'Комната уже заполнена или игра началась' }));
-    return;
+    return res.status(400).json({ error: 'Комната уже заполнена или игра началась' });
   }
 
-  room.players.push(client.id);
-  room.ws.push(ws);
-  room.playerColors.push(-1); // Black
+  const playerId = uuidv4().slice(0, 8);
+  room.players.push(playerId);
+  room.playerSessions.push({ playerId, player: -1 });
   room.state = 'playing';
-  client.roomId = roomId;
-  client.player = -1;
+  room.seq++;
 
-  ws.send(JSON.stringify({
-    type: 'room_joined',
-    roomId,
-    player: -1,
-    opponent: room.players[0]
-  }));
-
-  // Notify both players
-  const player1 = clients.get(room.ws[0]);
-  if (player1) {
-    room.ws[0].send(JSON.stringify({
-      type: 'opponent_joined',
-      opponentId: client.id
-    }));
-  }
-
-  // Start the game
-  broadcastToRoom(roomId, {
-    type: 'game_start',
-    board: room.game.board,
-    currentPlayer: 1,
-    player1: room.players[0],
-    player2: room.players[1]
+  // Push events
+  room.events.push({ type: 'opponent_joined', opponentId: playerId, seq: room.seq });
+  room.events.push({
+    type: 'game_start', seq: room.seq,
+    board: room.game.board, currentPlayer: 1,
+    player1: room.players[0], player2: room.players[1]
   });
 
-  console.log(`[+] ${client.id} joined room ${roomId}`);
-  console.log(`[+] Game started in room ${roomId}: ${room.players[0]} vs ${room.players[1]}`);
-}
+  console.log(`[HTTP] [+] ${playerId} joined room ${roomId}`);
 
-function leaveRoom(ws, roomId) {
+  res.json({
+    roomId, playerId, player: -1,
+    opponent: room.players[0],
+    board: room.game.board,
+    currentPlayer: 1
+  });
+});
+
+app.post('/api/roll', (req, res) => {
+  const { roomId, playerId } = req.body;
   const room = rooms.get(roomId);
-  if (!room) return;
+  if (!room) return res.status(404).json({ error: 'Комната не найдена' });
 
-  const client = clients.get(ws);
-
-  // Notify other player
-  for (const otherWs of room.ws) {
-    if (otherWs !== ws && otherWs.readyState === 1) {
-      otherWs.send(JSON.stringify({
-        type: 'opponent_left',
-        message: 'Соперник покинул игру'
-      }));
-    }
-  }
-
-  rooms.delete(roomId);
-  if (client) {
-    client.roomId = null;
-    client.player = null;
-  }
-  console.log(`[-] Room ${roomId} closed`);
-}
-
-function handleRollDice(ws) {
-  const client = clients.get(ws);
-  if (!client?.roomId) return;
-
-  const room = rooms.get(client.roomId);
-  if (!room || room.state !== 'playing') return;
+  const session = room.playerSessions.find(s => s.playerId === playerId);
+  if (!session) return res.status(403).json({ error: 'Не авторизован' });
 
   const game = room.game;
-
-  // Check it's this player's turn
-  if (game.currentPlayer !== client.player) {
-    ws.send(JSON.stringify({ type: 'error', message: 'Сейчас не ваш ход' }));
-    return;
+  if (game.currentPlayer !== session.player) {
+    return res.status(400).json({ error: 'Сейчас не ваш ход' });
   }
-
-  // Check dice not already rolled
   if (game.dice.length > 0) {
-    ws.send(JSON.stringify({ type: 'error', message: 'Кости уже брошены' }));
-    return;
+    return res.status(400).json({ error: 'Кости уже брошены' });
   }
 
   const dice = game.rollDice();
   const legalMoves = game.getLegalMoves();
+  room.seq++;
 
-  broadcastToRoom(client.roomId, {
-    type: 'dice_rolled',
-    dice,
-    currentPlayer: game.currentPlayer,
-    legalMoves,
-    board: game.board
+  room.events.push({
+    type: 'dice_rolled', seq: room.seq,
+    dice, currentPlayer: game.currentPlayer,
+    legalMoves, board: game.board
   });
 
   // If no legal moves, auto end turn
@@ -235,200 +114,317 @@ function handleRollDice(ws) {
     game.dice = [];
     game.diceUsed = [];
     game.currentPlayer = -game.currentPlayer;
-
-    broadcastToRoom(client.roomId, {
-      type: 'turn_skipped',
-      nextPlayer: game.currentPlayer,
-      board: game.board
+    room.seq++;
+    room.events.push({
+      type: 'turn_skipped', seq: room.seq,
+      nextPlayer: game.currentPlayer, board: game.board
     });
   }
-}
 
-function handleGetMoves(ws) {
-  const client = clients.get(ws);
-  if (!client?.roomId) return;
+  res.json({ dice, legalMoves, board: game.board, currentPlayer: game.currentPlayer });
+});
 
-  const room = rooms.get(client.roomId);
-  if (!room) return;
+app.post('/api/move', (req, res) => {
+  const { roomId, playerId, from, to } = req.body;
+  const room = rooms.get(roomId);
+  if (!room) return res.status(404).json({ error: 'Комната не найдена' });
 
-  const legalMoves = room.game.getLegalMoves();
-  ws.send(JSON.stringify({
-    type: 'legal_moves',
-    moves: legalMoves
-  }));
-}
-
-function handleMakeMove(ws, move) {
-  const client = clients.get(ws);
-  if (!client?.roomId) return;
-
-  const room = rooms.get(client.roomId);
-  if (!room || room.state !== 'playing') return;
+  const session = room.playerSessions.find(s => s.playerId === playerId);
+  if (!session) return res.status(403).json({ error: 'Не авторизован' });
 
   const game = room.game;
-
-  if (game.currentPlayer !== client.player) {
-    ws.send(JSON.stringify({ type: 'error', message: 'Сейчас не ваш ход' }));
-    return;
+  if (game.currentPlayer !== session.player) {
+    return res.status(400).json({ error: 'Сейчас не ваш ход' });
   }
-
   if (game.dice.length === 0) {
-    ws.send(JSON.stringify({ type: 'error', message: 'Сначала бросьте кости' }));
-    return;
+    return res.status(400).json({ error: 'Сначала бросьте кости' });
   }
 
-  // Check if move is legal
   const legalMoves = game.getLegalMoves();
-  const isLegal = legalMoves.some(m => m.from === move.from && m.to === move.to);
-
+  const isLegal = legalMoves.some(m => m.from === from && m.to === to);
   if (!isLegal && legalMoves.length > 0) {
-    ws.send(JSON.stringify({ type: 'error', message: 'Недопустимый ход' }));
-    return;
+    return res.status(400).json({ error: 'Недопустимый ход' });
   }
 
   // Execute the move
-  game.makeMove(move.from, move.to);
+  game.makeMove(from, to);
+  room.seq++;
 
-  const state = {
-    type: 'move_made',
-    move,
-    board: game.board,
-    dice: game.dice,
+  room.events.push({
+    type: 'move_made', seq: room.seq,
+    move: { from, to },
+    board: game.board, dice: game.dice,
     diceUsed: game.diceUsed,
-    currentPlayer: game.currentPlayer,
-    playerColor: client.player
-  };
+    currentPlayer: game.currentPlayer
+  });
 
-  broadcastToRoom(client.roomId, state);
-
-  // Check if player has remaining moves
+  // Check for remaining moves
   const remainingMoves = game.getAvailableDice();
+  let response = { board: game.board, dice: game.dice, diceUsed: game.diceUsed };
 
   if (remainingMoves.length === 0) {
-    // Check win
-    const offIdx = game.currentPlayer === 1 ? 26 : 27;
-    if (game.board[offIdx] >= 15) {
-      // Player who just moved won? No, we check AFTER switching
-      // Actually makeMove already runs checkWin
-    }
-
     if (game.gameOver) {
-      broadcastToRoom(client.roomId, {
-        type: 'game_over',
-        winner: game.winner,
-        board: game.board
-      });
+      room.seq++;
+      room.events.push({ type: 'game_over', seq: room.seq, winner: game.winner, board: game.board });
       room.state = 'finished';
+      response.gameOver = true;
+      response.winner = game.winner;
     } else {
-      // End turn
       const oldPlayer = game.currentPlayer;
       game.dice = [];
       game.diceUsed = [];
       game.currentPlayer = -oldPlayer;
-
-      broadcastToRoom(client.roomId, {
-        type: 'turn_changed',
-        nextPlayer: game.currentPlayer,
-        board: game.board
-      });
+      room.seq++;
+      room.events.push({ type: 'turn_changed', seq: room.seq, nextPlayer: game.currentPlayer, board: game.board });
+      response.turnChanged = true;
+      response.nextPlayer = game.currentPlayer;
     }
   } else {
-    // Check if remaining dice can be used
     const newLegalMoves = game.getLegalMoves();
     if (newLegalMoves.length === 0) {
-      // Auto end turn - no valid moves with remaining dice
       game.dice = [];
       game.diceUsed = [];
       game.currentPlayer = -game.currentPlayer;
-
-      broadcastToRoom(client.roomId, {
-        type: 'turn_skipped',
-        nextPlayer: game.currentPlayer,
-        board: game.board
-      });
+      room.seq++;
+      room.events.push({ type: 'turn_skipped', seq: room.seq, nextPlayer: game.currentPlayer, board: game.board });
+      response.turnSkipped = true;
+      response.nextPlayer = game.currentPlayer;
     } else {
-      broadcastToRoom(client.roomId, {
-        type: 'move_again',
+      room.seq++;
+      room.events.push({
+        type: 'move_again', seq: room.seq,
         remainingDice: remainingMoves,
-        legalMoves: newLegalMoves,
-        board: game.board
+        legalMoves: newLegalMoves, board: game.board
       });
+      response.moveAgain = true;
+      response.legalMoves = newLegalMoves;
+    }
+  }
+
+  res.json(response);
+});
+
+// Poll for state changes
+app.get('/api/state', (req, res) => {
+  const { roomId, playerId, seq } = req.query;
+  const room = rooms.get(roomId);
+  if (!room) return res.status(404).json({ error: 'Комната не найдена' });
+
+  const currentSeq = room.seq;
+  const lastSeq = parseInt(seq) || 0;
+
+  // Get new events since lastSeq
+  const newEvents = room.events.filter(e => e.seq > lastSeq);
+
+  // Get player info
+  const session = room.playerSessions.find(s => s.playerId === playerId);
+
+  res.json({
+    seq: currentSeq,
+    changed: newEvents.length > 0,
+    events: newEvents,
+    player: session ? session.player : null,
+    roomState: room.state
+  });
+});
+
+// ============================================
+// WebSocket fallback (kept for compatibility)
+// ============================================
+
+wsClients.set = function(ws, data) {
+  this.set(ws, data);
+};
+
+wsClients.get = function(ws) {
+  return Map.prototype.get.call(this, ws);
+};
+
+wsClients.delete = function(ws) {
+  return Map.prototype.delete.call(this, ws);
+};
+
+wss.on('connection', (ws) => {
+  const clientId = uuidv4().slice(0, 8);
+  const data = { id: clientId, roomId: null, player: null };
+  wsClients.set(ws, data);
+
+  console.log(`[WS] [+] Client ${clientId} connected`);
+
+  ws.send(JSON.stringify({ type: 'connected', clientId }));
+
+  ws.on('message', (data) => {
+    try {
+      const msg = JSON.parse(data);
+      handleWSMessage(ws, msg);
+    } catch (e) {
+      console.error('[-] WS invalid message:', e.message);
+    }
+  });
+
+  ws.on('close', () => {
+    const client = wsClients.get(ws);
+    console.log(`[WS] [-] Client ${client?.id} disconnected`);
+    if (client?.roomId) {
+      leaveRoom(ws, client.roomId);
+    }
+    wsClients.delete(ws);
+  });
+});
+
+function handleWSMessage(ws, msg) {
+  const client = wsClients.get(ws);
+  if (!client) return;
+
+  switch (msg.type) {
+    case 'create_room':
+      handleWSCreateRoom(ws);
+      break;
+    case 'join_room':
+      handleWSJoinRoom(ws, msg.roomId);
+      break;
+    case 'leave_room':
+      leaveRoom(ws, client.roomId);
+      break;
+    case 'roll_dice':
+      handleWSRollDice(ws);
+      break;
+    case 'make_move':
+      handleWSMakeMove(ws, msg.move);
+      break;
+    default:
+      ws.send(JSON.stringify({ type: 'error', message: 'Неизвестный тип' }));
+  }
+}
+
+function handleWSCreateRoom(ws) {
+  const client = wsClients.get(ws);
+  const roomId = uuidv4().slice(0, 6);
+  const game = new Backgammon();
+  rooms.set(roomId, {
+    id: roomId, players: [client.id], ws: [ws],
+    playerColors: [1], game, state: 'waiting',
+    seq: 0, events: [],
+    playerSessions: [{ playerId: client.id, player: 1 }]
+  });
+  client.roomId = roomId;
+  client.player = 1;
+  ws.send(JSON.stringify({ type: 'room_created', roomId, player: 1 }));
+  console.log(`[WS] [+] Room ${roomId} created`);
+}
+
+function handleWSJoinRoom(ws, roomId) {
+  const client = wsClients.get(ws);
+  const room = rooms.get(roomId);
+  if (!room) {
+    ws.send(JSON.stringify({ type: 'error', message: 'Комната не найдена' }));
+    return;
+  }
+  if (room.state !== 'waiting' || room.players.length >= 2) {
+    ws.send(JSON.stringify({ type: 'error', message: 'Комната уже заполнена' }));
+    return;
+  }
+  room.players.push(client.id);
+  if (!room.ws) room.ws = [];
+  room.ws.push(ws);
+  room.playerColors.push(-1);
+  room.state = 'playing';
+  client.roomId = roomId;
+  client.player = -1;
+
+  ws.send(JSON.stringify({ type: 'room_joined', roomId, player: -1, opponent: room.players[0] }));
+
+  if (room.ws[0]) {
+    room.ws[0].send(JSON.stringify({ type: 'opponent_joined', opponentId: client.id }));
+  }
+
+  broadcastToRoom(roomId, {
+    type: 'game_start', board: room.game.board, currentPlayer: 1,
+    player1: room.players[0], player2: room.players[1]
+  });
+}
+
+function handleWSRollDice(ws) {
+  const client = wsClients.get(ws);
+  if (!client?.roomId) return;
+  const room = rooms.get(client.roomId);
+  if (!room || room.state !== 'playing') return;
+  if (room.game.currentPlayer !== client.player) {
+    ws.send(JSON.stringify({ type: 'error', message: 'Сейчас не ваш ход' }));
+    return;
+  }
+  const dice = room.game.rollDice();
+  const legalMoves = room.game.getLegalMoves();
+  broadcastToRoom(client.roomId, { type: 'dice_rolled', dice, currentPlayer: room.game.currentPlayer, legalMoves, board: room.game.board });
+
+  if (legalMoves.length === 0) {
+    room.game.dice = [];
+    room.game.diceUsed = [];
+    room.game.currentPlayer = -room.game.currentPlayer;
+    broadcastToRoom(client.roomId, { type: 'turn_skipped', nextPlayer: room.game.currentPlayer, board: room.game.board });
+  }
+}
+
+function handleWSMakeMove(ws, move) {
+  const client = wsClients.get(ws);
+  if (!client?.roomId) return;
+  const room = rooms.get(client.roomId);
+  if (!room || room.state !== 'playing' || room.game.currentPlayer !== client.player) return;
+
+  room.game.makeMove(move.from, move.to);
+  const state = { type: 'move_made', move, board: room.game.board, dice: room.game.dice, diceUsed: room.game.diceUsed, currentPlayer: room.game.currentPlayer };
+  broadcastToRoom(client.roomId, state);
+
+  const remainingMoves = room.game.getAvailableDice();
+  if (remainingMoves.length === 0) {
+    if (room.game.gameOver) {
+      broadcastToRoom(client.roomId, { type: 'game_over', winner: room.game.winner, board: room.game.board });
+      room.state = 'finished';
+    } else {
+      room.game.dice = [];
+      room.game.diceUsed = [];
+      room.game.currentPlayer = -room.game.currentPlayer;
+      broadcastToRoom(client.roomId, { type: 'turn_changed', nextPlayer: room.game.currentPlayer, board: room.game.board });
+    }
+  } else {
+    const newLegalMoves = room.game.getLegalMoves();
+    if (newLegalMoves.length === 0) {
+      room.game.dice = [];
+      room.game.diceUsed = [];
+      room.game.currentPlayer = -room.game.currentPlayer;
+      broadcastToRoom(client.roomId, { type: 'turn_skipped', nextPlayer: room.game.currentPlayer, board: room.game.board });
+    } else {
+      broadcastToRoom(client.roomId, { type: 'move_again', remainingDice: remainingMoves, legalMoves: newLegalMoves, board: room.game.board });
     }
   }
 }
 
-function handleGetState(ws) {
-  const client = clients.get(ws);
-  if (!client?.roomId) return;
-
-  const room = rooms.get(client.roomId);
-  if (!room) return;
-
-  ws.send(JSON.stringify({
-    type: 'game_state',
-    ...room.game.getState(),
-    player: client.player,
-    roomId: client.roomId,
-    state: room.state
-  }));
-}
-
-function handleChat(ws, text) {
-  const client = clients.get(ws);
-  if (!client?.roomId || !text?.trim()) return;
-
-  broadcastToRoom(client.roomId, {
-    type: 'chat',
-    from: client.id,
-    text: text.trim()
-  });
-}
-
-function handleRematch(ws) {
-  const client = clients.get(ws);
-  if (!client?.roomId) return;
-
-  const room = rooms.get(client.roomId);
-  if (!room) return;
-
-  room.game = new Backgammon();
-  room.state = 'playing';
-
-  broadcastToRoom(client.roomId, {
-    type: 'rematch',
-    board: room.game.board,
-    currentPlayer: 1
-  });
-}
-
-function handleListRooms(ws) {
-  const roomList = [];
-  for (const [id, room] of rooms) {
-    roomList.push({
-      id,
-      players: room.players.length,
-      state: room.state
-    });
-  }
-  ws.send(JSON.stringify({ type: 'room_list', rooms: roomList }));
-}
-
-// Broadcast to all players in a room
-function broadcastToRoom(roomId, message) {
+function leaveRoom(ws, roomId) {
   const room = rooms.get(roomId);
   if (!room) return;
+  for (const otherWs of room.ws || []) {
+    if (otherWs !== ws && otherWs.readyState === 1) {
+      otherWs.send(JSON.stringify({ type: 'opponent_left', message: 'Соперник покинул игру' }));
+    }
+  }
+  rooms.delete(roomId);
+}
 
+function broadcastToRoom(roomId, message) {
+  const room = rooms.get(roomId);
+  if (!room || !room.ws) return;
   const data = JSON.stringify(message);
   for (const ws of room.ws) {
-    if (ws.readyState === 1) {
-      ws.send(data);
-    }
+    if (ws.readyState === 1) ws.send(data);
   }
 }
 
+// ============================================
 // Start server
+// ============================================
+
 const PORT = process.env.PORT || 3033;
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`[🎲] НАРДЫ — сервер запущен на порту ${PORT}`);
-  console.log(`[🌐] http://0.0.0.0:${PORT}`);
+  console.log(`[🎲] НАРДЫ — сервер на порту ${PORT}`);
+  console.log(`[🌐] http://localhost:${PORT}`);
 });
