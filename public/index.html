@@ -119,6 +119,18 @@
   }
   .go h2 { font-size: 24px; color: #e94560; margin-bottom: 8px; }
   .go button { padding: 10px 30px; border: none; border-radius: 8px; background: #e94560; color: white; font-size: 16px; cursor: pointer; margin-top: 10px; }
+  .clocks {
+    display: flex; justify-content: space-between; padding: 4px 14px;
+    background: #16213e; font-size: 13px; border-top: 1px solid #0a1628;
+  }
+  .clock {
+    font-variant-numeric: tabular-nums; letter-spacing: 1px;
+  }
+  .clock-w { color: #f0f0f0; }
+  .clock-b { color: #e94560; }
+  .clock.low { color: #ff4444; animation: blink 1s infinite; }
+  @keyframes blink { 50% { opacity: 0.4; } }
+
 </style>
 </head>
 <body>
@@ -142,6 +154,11 @@
 </div>
 
 <div id="gameArea" style="display:none">
+  <div class="clocks">
+    <span>⚪ <span class="clock clock-w" id="clockW">3:00</span></span>
+    <span>⏱️ <span class="clock" id="clockMove">0:20</span></span>
+    <span>⚫ <span class="clock clock-b" id="clockB">3:00</span></span>
+  </div>
   <div class="b-off">
     <span>Выбросили: <span class="cnt cw" id="bw">0</span></span>
     <span>Выбросили: <span class="cnt cb" id="bb">0</span></span>
@@ -297,6 +314,52 @@ async function doMove(from, to) {
 }
 
 function myTurn() { const s=gs(state); return s.cp===me; }
+
+// Timer update
+let timerInterval = null;
+function startTimer() {
+  if (timerInterval) return;
+  timerInterval = setInterval(updateClocks, 500);
+}
+function updateClocks() {
+  const s = gs(state);
+  const cw = document.getElementById('clockW');
+  const cb = document.getElementById('clockB');
+  const cm = document.getElementById('clockMove');
+
+  // Get real clock from server state (fallback to displayed)
+  const wClock = (state && state.board ? state.board.whiteClock : (state ? state.whiteClock : 180000)) || 180000;
+  const bClock = (state && state.board ? state.board.blackClock : (state ? state.blackClock : 180000)) || 180000;
+  const rollTime = (state && state.board ? state.board.rollTimestamp : (state ? state.rollTimestamp : 0)) || 0;
+
+  cw.textContent = formatClock(wClock);
+  cb.textContent = formatClock(bClock);
+  cw.className = 'clock clock-w' + (wClock < 30000 ? ' low' : '');
+  cb.className = 'clock clock-b' + (bClock < 30000 ? ' low' : '');
+
+  // Per-move timer
+  if (rollTime > 0 && s.di && s.di.length > 0) {
+    const elapsed = Date.now() - rollTime;
+    const moveTime = Math.max(0, 20000 - elapsed);
+    cm.textContent = formatClock(moveTime);
+    cm.className = 'clock' + (moveTime < 5000 ? ' low' : '');
+  } else {
+    cm.textContent = '0:20';
+    cm.className = 'clock';
+  }
+}
+function formatClock(ms) {
+  if (ms <= 0) return '0:00';
+  const sec = Math.ceil(ms / 1000);
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return m + ':' + (s < 10 ? '0' : '') + s;
+}
+
+// Start timer when game area shows
+const origCreateRoom = createRoom; createRoom = function() { startTimer(); return origCreateRoom.apply(this, arguments); };
+const origJoinRoom = joinRoom; joinRoom = function() { startTimer(); return origJoinRoom.apply(this, arguments); };
+
 function showMsg(t,type) { const e=document.getElementById('message'); e.textContent=t; e.className='msg'+(type?' '+type:''); }
 function showGO(winner) {
   document.getElementById('gameArea').style.display='none';

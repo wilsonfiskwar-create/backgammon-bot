@@ -33,6 +33,12 @@ class LongBackgammon {
     this.gameOver = false;
     this.winner = 0;
     this.moveHistory = [];
+
+    // Time control: 3 minutes each, 20-second free per move
+    this.whiteClock = 180000; // 3 min in ms
+    this.blackClock = 180000;
+    this.rollTimestamp = 0;   // When dice were rolled (ms)
+    this.lostOnTime = false;
   }
 
   // ---------- HELPERS ----------
@@ -108,7 +114,46 @@ class LongBackgammon {
       this.diceUsed = [false, false, false, false];
     }
 
+    // Start timing this move (20s free)
+    this.rollTimestamp = Date.now();
+
     return this.dice;
+  }
+
+  // Check if player has exceeded the 20-second free time
+  // Returns: { overtime: ms (0 if within limit), clockRemaining: ms }
+  checkTime(player) {
+    const elapsed = Date.now() - this.rollTimestamp;
+    const overtime = Math.max(0, elapsed - 20000); // 20s free
+    const clock = player === 1 ? this.whiteClock : this.blackClock;
+    const remaining = clock - overtime;
+    return { overtime, clockRemaining: Math.max(0, remaining), remainingSec: Math.max(0, Math.floor(remaining / 1000)) };
+  }
+
+  // Deduct overtime from player's clock after a move
+  // Returns: true if still has time, false if lost on time
+  deductTime(player) {
+    const { overtime } = this.checkTime(player);
+    if (overtime > 0) {
+      if (player === 1) {
+        this.whiteClock = Math.max(0, this.whiteClock - overtime);
+        if (this.whiteClock <= 0) {
+          this.gameOver = true;
+          this.winner = -1; // Player 1 ran out of time = player 2 wins
+          this.lostOnTime = true;
+          return false;
+        }
+      } else {
+        this.blackClock = Math.max(0, this.blackClock - overtime);
+        if (this.blackClock <= 0) {
+          this.gameOver = true;
+          this.winner = 1;
+          this.lostOnTime = true;
+          return false;
+        }
+      }
+    }
+    return true;
   }
 
   // ---------- MOVE GENERATION ----------
@@ -264,6 +309,14 @@ class LongBackgammon {
       board[to]++;
     }
 
+    // Deduct time for this move
+    this.deductTime(player);
+
+    // If lost on time, game over immediately
+    if (this.lostOnTime) {
+      return true;
+    }
+
     this.moveHistory.push({
       player,
       from,
@@ -311,7 +364,11 @@ class LongBackgammon {
       dice: [...this.dice],
       diceUsed: [...this.diceUsed],
       gameOver: this.gameOver,
-      winner: this.winner
+      winner: this.winner,
+      whiteClock: this.whiteClock,
+      blackClock: this.blackClock,
+      rollTimestamp: this.rollTimestamp,
+      lostOnTime: this.lostOnTime
     };
   }
 }
