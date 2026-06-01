@@ -3,839 +3,308 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Нарды</title>
+<title>Длинные нарды</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background: #1a1a2e;
-    color: #eee;
+    color: #e0e0e0;
     min-height: 100vh;
     overflow-x: hidden;
     user-select: none;
     -webkit-user-select: none;
   }
-
-  /* Header */
   .header {
     background: linear-gradient(135deg, #16213e, #0f3460);
-    padding: 10px 16px;
+    padding: 10px 14px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     border-bottom: 2px solid #e94560;
   }
-  .header h1 { font-size: 20px; font-weight: bold; }
+  .header h1 { font-size: 18px; }
   .header h1 span { color: #e94560; }
-  .header .room-id { font-size: 12px; color: #8899aa; }
-
+  .header .meta { font-size: 11px; color: #8899aa; }
   .game-info {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 8px 16px;
+    padding: 6px 14px;
     background: #16213e;
-    font-size: 14px;
+    font-size: 13px;
   }
-  .game-info .turn { font-weight: bold; }
-  .game-info .turn.active-white { color: #f0f0f0; }
-  .game-info .turn.active-black { color: #e94560; }
-
-  /* Board */
-  .board-container {
-    padding: 10px;
-    display: flex;
-    justify-content: center;
+  .panel {
+    padding: 12px;
+    background: #0f3460;
+    border-radius: 8px;
+    margin: 8px;
+    text-align: center;
   }
-
-  canvas {
+  .panel input {
     width: 100%;
-    max-width: 400px;
-    height: auto;
-    aspect-ratio: 1.15;
-    border-radius: 8px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-    touch-action: none;
-    cursor: pointer;
+    padding: 8px;
+    border: 1px solid #1a3a5c;
+    border-radius: 6px;
+    background: #1a1a2e;
+    color: #fff;
+    font-size: 14px;
+    margin: 4px 0;
   }
-
-  /* Dice area */
-  .dice-area {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 12px;
-    padding: 10px;
-    margin: 4px;
-  }
-  .die {
-    width: 52px;
-    height: 52px;
-    border-radius: 8px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 22px;
-    font-weight: bold;
-    color: #111;
-    background: #f5f5f5;
-    box-shadow: 0 3px 8px rgba(0,0,0,0.3);
-    transition: transform 0.3s;
-  }
-  .die.used { opacity: 0.3; transform: scale(0.85); }
-  .die.rolling { animation: roll 0.6s ease-out; }
-  @keyframes roll {
-    0% { transform: rotateX(0deg) rotateY(0deg); }
-    50% { transform: rotateX(360deg) rotateY(180deg); }
-    100% { transform: rotateX(720deg) rotateY(360deg); }
-  }
-  .die-dots { display: grid; grid-template-columns: repeat(3,1fr); gap: 4px; width: 32px; height: 32px; }
-  .dot { width: 6px; height: 6px; border-radius: 50%; background: #222; justify-self: center; align-self: center; }
-
-  /* Controls */
-  .controls {
-    display: flex;
-    gap: 10px;
-    justify-content: center;
-    padding: 8px 16px 4px;
-    flex-wrap: wrap;
-  }
-  .btn {
-    padding: 10px 24px;
+  .panel button {
+    padding: 8px 20px;
     border: none;
-    border-radius: 24px;
-    font-size: 15px;
-    font-weight: bold;
-    cursor: pointer;
-    transition: transform 0.15s, box-shadow 0.15s;
-    touch-action: manipulation;
-  }
-  .btn:active { transform: scale(0.95); }
-  .btn-primary {
+    border-radius: 6px;
     background: #e94560;
     color: white;
-    box-shadow: 0 4px 12px rgba(233,69,96,0.4);
-  }
-  .btn-primary:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-    transform: none;
-  }
-  .btn-secondary {
-    background: #0f3460;
-    color: white;
-    box-shadow: 0 2px 8px rgba(15,52,96,0.4);
-  }
-  .btn-small {
-    padding: 6px 14px;
-    font-size: 12px;
-  }
-
-  /* Status messages */
-  .status {
-    text-align: center;
-    padding: 6px 16px;
-    font-size: 13px;
-    color: #8899aa;
-    min-height: 24px;
-  }
-  .status.error { color: #e94560; }
-  .status.success { color: #4ecca3; }
-
-  /* Lobby */
-  #lobby {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 80vh;
-    padding: 20px;
-    text-align: center;
-  }
-  #lobby h2 { font-size: 28px; margin-bottom: 8px; }
-  #lobby h2 span { color: #e94560; }
-  #lobby p { color: #8899aa; margin: 4px 0; font-size: 14px; }
-  #lobby .btn { margin-top: 16px; }
-  #lobby .room-input {
-    display: flex;
-    gap: 8px;
-    margin-top: 12px;
-    align-items: center;
-  }
-  #lobby .room-input input {
-    padding: 10px 16px;
-    border-radius: 24px;
-    border: 1px solid #333;
-    background: #16213e;
-    color: white;
     font-size: 14px;
-    width: 160px;
-    text-align: center;
-    outline: none;
+    font-weight: bold;
+    cursor: pointer;
+    margin: 4px;
   }
-  #lobby .room-input input:focus { border-color: #e94560; }
-
-  /* Waiting overlay */
-  #waiting {
-    display: none;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 60vh;
+  .panel button.sec {
+    background: #0f3460;
+    border: 1px solid #e94560;
   }
-  #waiting .spinner {
-    width: 48px; height: 48px;
-    border: 4px solid #16213e;
-    border-top: 4px solid #e94560;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin-bottom: 16px;
+  .board-wrapper { padding: 8px; max-width: 500px; margin: 0 auto; }
+  .board { background: #2a1a0a; border: 2px solid #5a3a1a; border-radius: 8px; padding: 6px; }
+  .board-row { display: flex; justify-content: center; }
+  .point {
+    flex: 1; min-height: 85px; display: flex; flex-direction: column;
+    align-items: center; justify-content: flex-end; position: relative; padding: 2px 0; cursor: pointer;
   }
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  /* Score / status bar */
-  .score-bar {
-    display: flex;
-    justify-content: space-between;
-    padding: 4px 20px;
-    font-size: 13px;
-    color: #8899aa;
+  .point-up { flex-direction: column-reverse; justify-content: flex-start; }
+  .checker {
+    width: 20px; height: 20px; border-radius: 50%; margin: 1px 0;
+    border: 1.5px solid rgba(255,255,255,0.15); flex-shrink: 0;
+    transition: transform 0.12s;
   }
-  .score-bar .white-pips { color: #ccc; }
-  .score-bar .black-pips { color: #e94560; }
-  .score-bar .off { font-weight: bold; color: #4ecca3; }
-
-  /* Telegram scroll fix */
-  ::-webkit-scrollbar { display: none; }
+  .checker-w { background: radial-gradient(circle at 35% 35%, #fff, #c8c8c8); box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+  .checker-b { background: radial-gradient(circle at 35% 35%, #555, #111); box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+  .checker.sel { transform: scale(1.2); box-shadow: 0 0 8px #e94560; }
+  .checker.lgl { box-shadow: 0 0 6px #4CAF50; }
+  .pcount { font-size: 9px; color: #888; margin: 1px 0; }
+  .center-bar {
+    display: flex; justify-content: space-between; padding: 4px 8px;
+    background: #3a2a1a; border-top: 1px solid #5a3a1a; border-bottom: 1px solid #5a3a1a;
+  }
+  .off { text-align: center; font-size: 11px; }
+  .off .cnt { font-size: 18px; font-weight: bold; }
+  .off-w .cnt { color: #f0f0f0; }
+  .off-b .cnt { color: #e94560; }
+  .dice-area {
+    display: flex; justify-content: center; align-items: center; gap: 10px; padding: 10px; min-height: 56px;
+  }
+  .die {
+    width: 40px; height: 40px; background: #fff; color: #222; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: bold;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  }
+  .die.used { opacity: 0.3; }
+  .die-btn {
+    padding: 10px 28px; border: none; border-radius: 8px; background: #e94560;
+    color: white; font-size: 16px; font-weight: bold; cursor: pointer;
+  }
+  .die-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .msg { text-align: center; padding: 8px; font-size: 13px; color: #ffcc00; min-height: 30px; }
+  .msg.err { color: #e94560; }
+  .msg.ok { color: #4CAF50; }
+  .b-off { display: flex; justify-content: space-between; padding: 4px 14px; font-size: 11px; color: #8899aa; }
+  .b-off .cnt { font-weight: bold; font-size: 14px; }
+  .cw { color: #f0f0f0; }
+  .cb { color: #e94560; }
+  .go {
+    text-align: center; padding: 20px; background: linear-gradient(135deg, #16213e, #0f3460);
+    border-radius: 12px; margin: 10px;
+  }
+  .go h2 { font-size: 24px; color: #e94560; margin-bottom: 8px; }
+  .go button { padding: 10px 30px; border: none; border-radius: 8px; background: #e94560; color: white; font-size: 16px; cursor: pointer; margin-top: 10px; }
 </style>
 </head>
 <body>
 
-<!-- LOBBY SCREEN -->
-<div id="lobby">
-  <h2><span>🎲</span> Нарды</h2>
-  <p>Играйте в нарды с друзьями в Telegram</p>
-  <div style="margin-top:24px;">
-    <button class="btn btn-primary" onclick="createRoom()">Создать игру</button>
-  </div>
-  <div class="room-input">
-    <input id="roomInput" type="text" placeholder="Код комнаты" maxlength="8">
-    <button class="btn btn-primary btn-small" onclick="joinRoom()">Присоединиться</button>
-  </div>
-  <p id="lobbyStatus" style="margin-top:12px;"></p>
+<div class="header">
+  <h1>🎲 Д<span>Л</span>ИННЫЕ Н<span>А</span>РДЫ</h1>
+  <div class="meta" id="roomMeta"></div>
+</div>
+<div class="game-info">
+  <span id="playerLabel">—</span>
+  <span id="turnLabel">Ожидание...</span>
+  <span id="opponentLabel">—</span>
 </div>
 
-<!-- WAITING SCREEN -->
-<div id="waiting">
-  <div class="spinner"></div>
-  <p>Ждём соперника...</p>
-  <p style="font-size:12px; color:#8899aa; margin-top:8px;">
-    Код комнаты: <span id="waitingRoomId" style="color:#e94560;font-weight:bold;"></span>
-  </p>
-  <button class="btn btn-secondary" onclick="cancelRoom()" style="margin-top:16px;">Отмена</button>
+<div id="roomPanel" class="panel">
+  <div style="margin-bottom:6px;font-size:13px;color:#8899aa;">Комната</div>
+  <button onclick="createRoom()">🎲 Создать комнату</button>
+  <div style="margin:6px 0;color:#555;">или</div>
+  <input id="roomInput" placeholder="Введите код комнаты" onkeydown="if(event.key==='Enter')joinRoom()">
+  <button class="sec" onclick="joinRoom()">🔗 Присоединиться</button>
 </div>
 
-<!-- GAME SCREEN -->
-<div id="game" style="display:none;">
-  <div class="header">
-    <h1>🎲 <span>Нарды</span></h1>
-    <span class="room-id" id="gameRoomId"></span>
+<div id="gameArea" style="display:none">
+  <div class="b-off">
+    <span>Выбросили: <span class="cnt cw" id="bw">0</span></span>
+    <span>Выбросили: <span class="cnt cb" id="bb">0</span></span>
   </div>
+  <div class="board-wrapper"><div class="board" id="board"></div></div>
+  <div class="dice-area" id="diceArea"><div id="diceDisplay"></div></div>
+  <div class="msg" id="message"></div>
+</div>
 
-  <div class="game-info">
-    <span id="playerWhite" style="color:#ddd;">⚪</span>
-    <span class="turn" id="turnIndicator">—</span>
-    <span id="playerBlack" style="color:#e94560;">⚫</span>
-  </div>
-
-  <div class="score-bar">
-    <span class="white-pips" id="whiteOff">Выброшено: 0</span>
-    <span class="black-pips" id="blackOff">Выброшено: 0</span>
-  </div>
-
-  <div class="board-container">
-    <canvas id="boardCanvas"></canvas>
-  </div>
-
-  <div class="dice-area" id="diceArea">
-    <div class="die" id="die1"></div>
-    <div class="die" id="die2"></div>
-  </div>
-
-  <div class="controls">
-    <button class="btn btn-primary" id="btnRoll" onclick="rollDice()">🎲 Бросить кости</button>
-    <button class="btn btn-secondary" id="btnEndTurn" onclick="endTurn()" style="display:none;">Пропустить</button>
-  </div>
-
-  <div class="status" id="statusMsg">Бросьте кости, чтобы начать</div>
+<div id="gameOverPanel" style="display:none" class="go">
+  <h2 id="winnerText">🏆 Победитель!</h2>
+  <button onclick="location.reload()">🔄 Новая игра</button>
 </div>
 
 <script>
-    // ============================================
-    // НАРДЫ — Client (HTTP + Polling)
-    // ============================================
+// ========== GAME STATE ==========
+let pid = null, rid = null, me = null, state = null, sel = null, poll = false, seq = 0, moves = [];
+const BASE = window.location.origin;
 
-    const TG = window.Telegram?.WebApp;
-    if (TG) { TG.expand(); TG.ready(); }
+function gs(d) { // normalize game state (handles board.white|black vs flat white|black)
+  const s = d && d.board ? d.board : d;
+  return s ? { w: s.white||[], b: s.black||[], cp: s.currentPlayer||1, di: s.dice||[], du: s.diceUsed||[], go: s.gameOver, wn: s.winner } : { w:[], b:[], cp:1, di:[], du:[] };
+}
 
-    const API = '/api';
-    let playerId = null;
-    let roomId = null;
-    let playerColor = 0; // 1 = white, -1 = black
-    let lastSeq = 0;
-    let gameState = { board: null, currentPlayer: 0, dice: [], diceUsed: [], gameOver: false, winner: 0 };
-    let selectedFrom = null;
-    let legalMoves = [];
-    let pollTimer = null;
-    let lobbyStatusEl = document.getElementById('lobbyStatus');
+// ========== ROOM ==========
+async function createRoom() {
+  const r = await (await fetch(BASE+'/api/create',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})).json();
+  pid = r.playerId; rid = r.roomId; me = r.player;
+  document.getElementById('roomMeta').textContent = 'Комната: '+rid;
+  document.getElementById('roomPanel').style.display='none';
+  document.getElementById('gameArea').style.display='block';
+  document.getElementById('playerLabel').textContent = me===1 ? '⚪ Белые' : '⚫ Чёрные';
+  document.getElementById('turnLabel').textContent = 'Ожидание игрока...';
+  seq=0; startPoll();
+}
 
-    // Canvas
-    const canvas = document.getElementById('boardCanvas');
-    const ctx = canvas.getContext('2d');
-    const BOARD_ASPECT = 1.15;
-    let boardW, boardH, pointW, triH;
+async function joinRoom() {
+  const ridInput = document.getElementById('roomInput').value.trim();
+  if (!ridInput) return;
+  const r = await (await fetch(BASE+'/api/join',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({roomId:ridInput})})).json();
+  pid=r.playerId; rid=r.roomId; me=r.player;
+  document.getElementById('roomMeta').textContent = 'Комната: '+rid;
+  document.getElementById('roomPanel').style.display='none';
+  document.getElementById('gameArea').style.display='block';
+  document.getElementById('playerLabel').textContent = me===1 ? '⚪ Белые' : '⚫ Чёрные';
+  seq=0; startPoll();
+  applyState(r);
+}
 
-    function resizeCanvas() {
-      const container = canvas.parentElement;
-      const maxW = Math.min(container.clientWidth - 4, 400);
-      const dpr = window.devicePixelRatio;
-      canvas.width = maxW * dpr;
-      canvas.height = maxW * BOARD_ASPECT * dpr;
-      canvas.style.width = maxW + 'px';
-      canvas.style.height = (maxW * BOARD_ASPECT) + 'px';
-      boardW = maxW; boardH = maxW * BOARD_ASPECT;
-      pointW = boardW / 12; triH = boardH * 0.44;
-      if (gameState.board) drawBoard();
-    }
-    window.addEventListener('resize', resizeCanvas);
+// ========== POLL ==========
+function startPoll() { poll=true; pollState(); }
+async function pollState() {
+  if (!rid||!pid) return;
+  try {
+    const r = await (await fetch(BASE+'/api/state?roomId='+rid+'&playerId='+pid+'&seq='+seq)).json();
+    seq = r.seq||0;
+    if (r.changed && r.events) r.events.forEach(e => applyEvent(e));
+    setTimeout(pollState, r.roomState==='finished' ? 2000 : 1000);
+  } catch(e) { setTimeout(pollState,2000); }
+}
 
-    // ============================================
-    // HTTP helpers
-    // ============================================
+function applyEvent(e) {
+  if (['game_start','opponent_joined','room_joined','dice_rolled','move_made','move_again','turn_changed','turn_skipped'].includes(e.type)) applyState(e);
+  if (e.type === 'game_over') { applyState(e); showGO(e.winner||e.board?.winner); }
+}
 
-    async function apiPost(path, body) {
-      try {
-        const r = await fetch(API + path, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body)
-        });
-        return await r.json();
-      } catch (e) {
-        return { error: 'Ошибка соединения' };
-      }
-    }
+// ========== RENDER ==========
+function applyState(d) {
+  if (!d) return;
+  state = d;
+  const s = gs(d);
+  const board = document.getElementById('board');
+  board.innerHTML = '';
 
-    async function apiGet(path) {
-      try {
-        const r = await fetch(API + path);
-        return await r.json();
-      } catch (e) {
-        return { error: 'Ошибка соединения' };
-      }
-    }
+  // Top row: 24-13 (down-pointing)
+  const tr = document.createElement('div'); tr.className='board-row';
+  for (let p=24; p>=13; p--) tr.appendChild(mkPt(p, s.w[p]||0, s.b[p]||0, false));
+  board.appendChild(tr);
 
-    // ============================================
-    // Polling
-    // ============================================
+  // Center bar: off-board counts
+  const cc = document.createElement('div'); cc.className='center-bar';
+  cc.innerHTML = '<div class="off off-w">Вне: <span class="cnt">'+(s.w[0]||0)+'</span></div><div class="off off-b">Вне: <span class="cnt">'+(s.b[0]||0)+'</span></div>';
+  board.appendChild(cc);
 
-    function startPolling() {
-      stopPolling();
-      pollTimer = setInterval(pollState, 1500);
-      pollState(); // immediate first poll
-    }
+  // Bottom row: 1-12 (up-pointing)
+  const br = document.createElement('div'); br.className='board-row';
+  for (let p=1; p<=12; p++) br.appendChild(mkPt(p, s.w[p]||0, s.b[p]||0, true));
+  board.appendChild(br);
 
-    function stopPolling() {
-      if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
-    }
+  document.getElementById('bw').textContent = s.w[25]||0;
+  document.getElementById('bb').textContent = s.b[25]||0;
 
-    async function pollState() {
-      if (!roomId || !playerId) return;
-      const data = await apiGet(`/state?roomId=${roomId}&playerId=${playerId}&seq=${lastSeq}`);
-      if (data.error) return;
-      if (!data.changed || !data.events) return;
-      lastSeq = data.seq;
-      if (data.player !== undefined) playerColor = data.player;
-      for (const ev of data.events) {
-        handleEvent(ev);
-      }
-    }
+  // Dice
+  const dd = document.getElementById('diceDisplay');
+  if (!s.di || s.di.length===0) {
+    dd.innerHTML = myTurn() ? '<button class="die-btn" onclick="rollDice()">🎲 Бросить кости</button>' : '<span style="color:#8899aa;">Ожидание...</span>';
+  } else {
+    let h=''; const faces=['','⚀','⚁','⚂','⚃','⚄','⚅'];
+    for(let i=0;i<s.di.length;i++) h+='<div class="die'+(s.du&&s.du[i]?' used':'')+'">'+(faces[s.di[i]]||s.di[i])+'</div>';
+    dd.innerHTML = h;
+  }
 
-    // ============================================
-    // Event handler (same logic as WS, but from polled events)
-    // ============================================
+  document.getElementById('turnLabel').textContent = myTurn() ? (s.di.length ? 'Ваш ход' : 'Бросьте кости') : 'Ход соперника';
+  document.getElementById('turnLabel').style.color = myTurn() ? (me===1?'#f0f0f0':'#e94560') : '#8899aa';
+}
 
-    function handleEvent(ev) {
-      switch (ev.type) {
-        case 'opponent_joined':
-          document.getElementById('waiting').style.display = 'none';
-          showGame();
-          setStatus('Соперник найден!', 'success');
-          break;
+function mkPt(n, w, b, up) {
+  const d = document.createElement('div');
+  d.className = 'point'+(up?' point-up':'');
+  d.dataset.pt = n;
+  for(let i=0;i<Math.min(w,12);i++) { const c=document.createElement('div'); c.className='checker checker-w'; c.dataset.pt=n; if(sel===n)c.classList.add('sel'); c.onclick=()=>onClick(n,1); d.appendChild(c); }
+  for(let i=0;i<Math.min(b,12);i++) { const c=document.createElement('div'); c.className='checker checker-b'; c.dataset.pt=n; if(sel===n)c.classList.add('sel'); c.onclick=()=>onClick(n,-1); d.appendChild(c); }
+  if (w>12||b>12) { const l=document.createElement('div'); l.className='pcount'; l.textContent=(w>0?'⚪'+w:'')+(b>0?' ⚫'+b:''); d.appendChild(l); }
+  return d;
+}
 
-        case 'game_start':
-          gameState.board = ev.board;
-          gameState.currentPlayer = 1;
-          showGame();
-          resizeCanvas();
-          updateTurnDisplay();
-          if (playerColor === gameState.currentPlayer) {
-            setStatus('Ваш ход! Бросьте кости', '');
-            document.getElementById('btnRoll').disabled = false;
-          } else {
-            setStatus('Ход соперника...', '');
-            document.getElementById('btnRoll').disabled = true;
-          }
-          break;
+// ========== MOVES ==========
+async function rollDice() {
+  if (!rid||!pid) return;
+  const r = await (await fetch(BASE+'/api/roll',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({roomId:rid,playerId:pid})})).json();
+  moves = r.legalMoves||[];
+  state = r; applyState(r);
+  showMsg(moves.length ? 'Бросайте!' : 'Нет ходов', moves.length?'':'err');
+}
 
-        case 'dice_rolled':
-          gameState.dice = ev.dice;
-          gameState.board = ev.board;
-          gameState.diceUsed = new Array(ev.dice.length).fill(false);
-          legalMoves = ev.legalMoves || [];
-          renderDice();
-          drawBoard();
-          document.getElementById('btnRoll').style.display = 'none';
-          selectedFrom = null;
-          if (legalMoves.length === 0) {
-            setStatus('Нет доступных ходов. Пропуск.', 'error');
-            setTimeout(() => document.getElementById('btnEndTurn').click(), 1000);
-          } else {
-            setStatus('Выберите шашку для хода', '');
-          }
-          break;
-
-        case 'move_made':
-          gameState.board = ev.board;
-          gameState.dice = ev.dice;
-          gameState.diceUsed = ev.diceUsed;
-          drawBoard();
-          renderDice();
-          selectedFrom = null;
-          break;
-
-        case 'move_again':
-          gameState.board = ev.board;
-          legalMoves = ev.legalMoves || [];
-          renderDice();
-          drawBoard();
-          if (legalMoves.length === 0) {
-            endTurn();
-          } else {
-            setStatus('Ходите ещё!', '');
-          }
-          break;
-
-        case 'turn_changed':
-          gameState.board = ev.board;
-          gameState.currentPlayer = ev.nextPlayer;
-          gameState.dice = [];
-          legalMoves = [];
-          selectedFrom = null;
-          drawBoard();
-          renderDice();
-          document.getElementById('btnRoll').style.display = '';
-          document.getElementById('btnRoll').disabled = false;
-          updateTurnDisplay();
-          if (gameState.currentPlayer === playerColor) {
-            setStatus('Ваш ход! Бросьте кости', '');
-          } else {
-            setStatus('Ход соперника...', '');
-            document.getElementById('btnRoll').disabled = true;
-          }
-          break;
-
-        case 'turn_skipped':
-          gameState.board = ev.board;
-          gameState.currentPlayer = ev.nextPlayer;
-          gameState.dice = [];
-          legalMoves = [];
-          selectedFrom = null;
-          drawBoard();
-          renderDice();
-          document.getElementById('btnRoll').style.display = '';
-          updateTurnDisplay();
-          if (gameState.currentPlayer === playerColor) {
-            setStatus('Соперник пропустил. Ваш ход!', '');
-            document.getElementById('btnRoll').disabled = false;
-          } else {
-            setStatus('Ваш ход пропущен. Ход соперника.', 'error');
-            document.getElementById('btnRoll').disabled = true;
-          }
-          break;
-
-        case 'game_over':
-          gameState.board = ev.board;
-          gameState.gameOver = true;
-          gameState.winner = ev.winner;
-          drawBoard();
-          updateTurnDisplay();
-          const won = ev.winner === playerColor;
-          setStatus(won ? '🏆 ВЫ ПОБЕДИЛИ! 🏆' : '😔 Поражение', won ? 'success' : 'error');
-          document.getElementById('btnRoll').style.display = 'none';
-          stopPolling();
-          break;
-      }
-    }
-
-    // ============================================
-    // Board Drawing (unchanged)
-    // ============================================
-
-    function drawBoard() {
-      if (!gameState.board) return;
-      const b = gameState.board;
-      const dpr = window.devicePixelRatio;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-      ctx.fillStyle = '#2d1810';
-      ctx.fillRect(0, 0, boardW, boardH);
-      ctx.strokeStyle = '#4a2c1a';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(1, 1, boardW - 2, boardH - 2);
-      ctx.fillStyle = '#3a2215';
-      ctx.fillRect(boardW / 2 - 4, 0, 8, boardH);
-      ctx.fillStyle = '#2d1810';
-      ctx.fillRect(boardW / 2 - 16, 0, 32, boardH);
-
-      for (let p = 1; p <= 24; p++) {
-        const isTopRow = p <= 12;
-        let idx = isTopRow ? (12 - p) : (p - 13);
-        const x = idx * pointW;
-        const y = isTopRow ? 0 : boardH / 2 + 12;
-        const h = triH;
-        const color = p % 2 === 0 ? '#8b4513' : '#d4a574';
-
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-        ctx.lineTo(x + pointW, y);
-        ctx.lineTo(x + pointW / 2, isTopRow ? y + h : y - h);
-        ctx.closePath();
-        ctx.fillStyle = color;
-        ctx.fill();
-
-        const checkerCount = b[p];
-        if (checkerCount !== 0) {
-          const isWhite = checkerCount > 0;
-          const count = Math.abs(checkerCount);
-          const maxPerCol = 5;
-          const cols = Math.ceil(count / maxPerCol);
-          const perCol = Math.ceil(count / cols);
-
-          for (let i = 0; i < count; i++) {
-            const col = Math.floor(i / perCol);
-            const row = i % perCol;
-            const cx = x + pointW / 2 + (col - (cols - 1) / 2) * (pointW * 0.32);
-            const cy = isTopRow
-              ? 6 + row * (h / maxPerCol * 0.85) + h / maxPerCol / 2
-              : boardH - 6 - (h / maxPerCol / 2) - row * (h / maxPerCol * 0.85);
-            const r = pointW * 0.18;
-
-            ctx.beginPath();
-            ctx.arc(cx, cy, r, 0, Math.PI * 2);
-            if (isWhite) {
-              ctx.fillStyle = '#f0ead6'; ctx.fill();
-              ctx.strokeStyle = '#999'; ctx.lineWidth = 1; ctx.stroke();
-            } else {
-              ctx.fillStyle = '#222'; ctx.fill();
-              ctx.strokeStyle = '#555'; ctx.lineWidth = 1; ctx.stroke();
-            }
-          }
-        }
-      }
-
-      const barW = gameState.board[0];
-      const barB = gameState.board[25];
-      const barX = boardW / 2;
-      for (let i = 0; i < barW; i++) {
-        ctx.beginPath();
-        ctx.arc(barX + (i % 2 === 0 ? -8 : 8), 12 + Math.floor(i / 2) * 20, 7, 0, Math.PI * 2);
-        ctx.fillStyle = '#f0ead6'; ctx.fill();
-        ctx.strokeStyle = '#999'; ctx.lineWidth = 1; ctx.stroke();
-      }
-      for (let i = 0; i < barB; i++) {
-        ctx.beginPath();
-        ctx.arc(barX + (i % 2 === 0 ? -8 : 8), boardH - 12 - Math.floor(i / 2) * 20, 7, 0, Math.PI * 2);
-        ctx.fillStyle = '#222'; ctx.fill();
-        ctx.strokeStyle = '#555'; ctx.lineWidth = 1; ctx.stroke();
-      }
-
-      ctx.fillStyle = '#f0ead6';
-      ctx.font = '12px sans-serif';
-      ctx.fillText('\u2B1C ' + (gameState.board[26] || 0), 4, boardH - 4);
-      ctx.fillStyle = '#e94560';
-      ctx.fillText('\u2B1B ' + (gameState.board[27] || 0), 4, 14);
-
-      if (selectedFrom !== null && selectedFrom >= 1 && selectedFrom <= 24) {
-        const isTop = selectedFrom <= 12;
-        let sx = isTop ? (12 - selectedFrom) * pointW : (selectedFrom - 13) * pointW;
-        let sy = isTop ? 0 : boardH / 2 + 12;
-        ctx.strokeStyle = '#4ecca3';
-        ctx.lineWidth = 3;
-        ctx.setLineDash([4, 4]);
-        ctx.strokeRect(sx + 2, isTop ? sy + 2 : sy - triH + 2, pointW - 4, triH - 4);
-        ctx.setLineDash([]);
-      }
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-    }
-
-    // ============================================
-    // Canvas click
-    // ============================================
-
-    canvas.addEventListener('click', (e) => {
-      if (gameState.gameOver) return;
-      if (playerColor !== gameState.currentPlayer) {
-        setStatus('Сейчас не ваш ход', 'error'); return;
-      }
-      if (gameState.dice.length === 0) {
-        setStatus('Сначала бросьте кости', 'error'); return;
-      }
-
-      const rect = canvas.getBoundingClientRect();
-      const x = (e.clientX - rect.left) * (boardW / rect.width);
-      const y = (e.clientY - rect.top) * (boardH / rect.height);
-      const col = Math.floor(x / pointW);
-      const point = y < (boardH / 2 + 12) ? 12 - col : 13 + col;
-      if (point < 1 || point > 24) return;
-
-      if (selectedFrom !== null) {
-        tryMove(selectedFrom, point);
-      } else {
-        selectChecker(point);
-      }
+function onClick(pt, col) {
+  if (!myTurn()||!state) return;
+  const s = gs(state);
+  if (!s.di||!s.di.length) { showMsg('Бросьте кости','err'); return; }
+  if (sel===null) {
+    const arr = col===1 ? s.w : s.b;
+    if (!arr||!arr[pt]) { showMsg('Нет ваших шашек','err'); return; }
+    sel = pt; applyState(state);
+    // Highlight legal destinations
+    const dests = moves.filter(m=>m.from===pt).map(m=>m.to);
+    document.querySelectorAll('.point').forEach(el => {
+      if (dests.includes(parseInt(el.dataset.pt))) el.querySelectorAll('.checker').forEach(c => c.classList.add('lgl'));
     });
+    showMsg('Выберите куда',''); return;
+  }
+  const from = sel; sel = null;
+  const mv = moves.find(m => m.from===from && m.to===pt);
+  if (!mv) { showMsg('Недопустимо','err'); applyState(state); return; }
+  doMove(from, pt);
+}
 
-    function selectChecker(point) {
-      const b = gameState.board;
-      if (b[point] * playerColor <= 0) {
-        setStatus('Здесь нет вашей шашки', 'error'); return;
-      }
-      if (!legalMoves.some(m => m.from === point)) {
-        setStatus('С этой шашки нет хода', 'error'); return;
-      }
-      selectedFrom = point;
-      setStatus((playerColor === 1 ? '\u26AA' : '\u26AB') + ' Точка ' + point + ' выбрана. Куда ходим?', '');
-      drawBoard();
-    }
+async function doMove(from, to) {
+  const r = await (await fetch(BASE+'/api/move',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({roomId:rid,playerId:pid,from,to})})).json();
+  state = r; applyState(r);
+  if (r.gameOver) { showGO(r.winner); return; }
+  moves = r.legalMoves||[];
+  showMsg(r.moveAgain||r.remainingDice ? 'Ещё ход!' : (r.turnChanged||r.turnSkipped ? '' : ''), '');
+}
 
-    function tryMove(from, to) {
-      const move = legalMoves.find(m => m.from === from && m.to === to);
-      if (!move) {
-        const b = gameState.board;
-        if (b[to] * playerColor > 0 && legalMoves.some(m => m.from === to)) {
-          selectedFrom = to;
-          setStatus('Переключено на точку ' + to, '');
-          drawBoard();
-          return;
-        }
-        setStatus('Недопустимый ход', 'error');
-        return;
-      }
-      sendMove(from, to);
-      selectedFrom = null;
-    }
+function myTurn() { const s=gs(state); return s.cp===me; }
+function showMsg(t,type) { const e=document.getElementById('message'); e.textContent=t; e.className='msg'+(type?' '+type:''); }
+function showGO(winner) {
+  document.getElementById('gameArea').style.display='none';
+  document.getElementById('gameOverPanel').style.display='block';
+  document.getElementById('winnerText').textContent = winner===me ? '🏆 Победа!' : '😞 Проиграли';
+}
 
-    async function sendMove(from, to) {
-      const res = await apiPost('/move', { roomId, playerId, from, to });
-      if (res.error) { setStatus(res.error, 'error'); return; }
-      if (res.board) gameState.board = res.board;
-      if (res.dice) { gameState.dice = res.dice; gameState.diceUsed = res.diceUsed || []; }
-      drawBoard();
-      renderDice();
-      updateTurnDisplay();
-      if (res.gameOver) {
-        gameState.gameOver = true;
-        gameState.winner = res.winner;
-        drawBoard();
-        updateTurnDisplay();
-        setStatus(res.winner === playerColor ? '\uD83C\uDFC6 ВЫ ПОБЕДИЛИ! \uD83C\uDFC6' : '\uD83D\uDE14 Поражение', res.winner === playerColor ? 'success' : 'error');
-        document.getElementById('btnRoll').style.display = 'none';
-        stopPolling();
-        return;
-      }
-      if (res.turnChanged) {
-        gameState.currentPlayer = res.nextPlayer;
-        gameState.dice = [];
-        legalMoves = [];
-        document.getElementById('btnRoll').style.display = '';
-        document.getElementById('btnRoll').disabled = false;
-        if (gameState.currentPlayer === playerColor) setStatus('Ваш ход! Бросьте кости', '');
-        else { setStatus('Ход соперника...', ''); document.getElementById('btnRoll').disabled = true; }
-      } else if (res.moveAgain && res.legalMoves) {
-        legalMoves = res.legalMoves;
-        if (legalMoves.length > 0) setStatus('Ходите ещё!', '');
-      }
-    }
-
-    // ============================================
-    // Dice rendering
-    // ============================================
-
-    function renderDice() {
-      const dice = gameState.dice;
-      const used = gameState.diceUsed || [];
-      const die1 = document.getElementById('die1');
-      const die2 = document.getElementById('die2');
-      if (dice.length === 0) {
-        die1.innerHTML = '?'; die1.className = 'die';
-        die2.innerHTML = '?'; die2.className = 'die';
-        return;
-      }
-      const vals = dice.slice(0, 4);
-      const usedStatus = used.slice(0, 4);
-      const uniqueVal = [...new Set(vals)];
-      if (uniqueVal.length === 1 && vals.length >= 4) {
-        renderDie(die1, uniqueVal[0], usedStatus[0] && usedStatus[1]);
-        renderDie(die2, uniqueVal[0], usedStatus[2] && usedStatus[3]);
-      } else {
-        renderDie(die1, vals[0], usedStatus[0]);
-        renderDie(die2, vals[1], usedStatus[1]);
-      }
-    }
-
-    function renderDie(el, val, isUsed) {
-      el.className = 'die' + (isUsed ? ' used' : '');
-      el.innerHTML = '';
-      const dots = getDotPattern(val);
-      const grid = document.createElement('div');
-      grid.className = 'die-dots';
-      for (const hasDot of dots) {
-        const dot = document.createElement('div');
-        dot.className = 'dot';
-        dot.style.visibility = hasDot ? 'visible' : 'hidden';
-        grid.appendChild(dot);
-      }
-      el.appendChild(grid);
-    }
-
-    function getDotPattern(val) {
-      return {
-        1: [0,0,0, 0,1,0, 0,0,0],
-        2: [1,0,0, 0,0,0, 0,0,1],
-        3: [1,0,0, 0,1,0, 0,0,1],
-        4: [1,0,1, 0,0,0, 1,0,1],
-        5: [1,0,1, 0,1,0, 1,0,1],
-        6: [1,0,1, 1,0,1, 1,0,1]
-      }[val] || [0,0,0, 0,1,0, 0,0,0];
-    }
-
-    // ============================================
-    // UI
-    // ============================================
-
-    function setStatus(msg, type = '') {
-      const el = document.getElementById('statusMsg');
-      el.textContent = msg;
-      el.className = 'status' + (type ? ' ' + type : '');
-    }
-
-    function updateTurnDisplay() {
-      const el = document.getElementById('turnIndicator');
-      const diceReady = gameState.dice.length > 0;
-      if (gameState.gameOver) {
-        if (gameState.winner === playerColor) { el.textContent = '\uD83C\uDFC6 ВЫ ПОБЕДИЛИ!'; el.style.color = '#4ecca3'; }
-        else if (gameState.winner === -playerColor) { el.textContent = '\uD83D\uDE14 Вы проиграли'; el.style.color = '#e94560'; }
-        else { el.textContent = '\uD83E\uDD1D Ничья'; el.style.color = '#8899aa'; }
-        return;
-      }
-      if (gameState.currentPlayer === playerColor) {
-        el.textContent = '\uD83D\uDD35 Ваш ход' + (diceReady ? ' (ходите)' : ' (бросьте)');
-        el.className = 'turn active-' + (playerColor === 1 ? 'white' : 'black');
-      } else {
-        el.textContent = '\uD83D\uDD34 Ход соперника';
-        el.className = 'turn';
-      }
-      const b = gameState.board;
-      if (b) {
-        document.getElementById('whiteOff').textContent = '\u26AA Выброшено: ' + (b[26] || 0);
-        document.getElementById('blackOff').textContent = '\u26AB Выброшено: ' + (b[27] || 0);
-      }
-    }
-
-    // ============================================
-    // Game actions (HTTP)
-    // ============================================
-
-    async function createRoom() {
-      lobbyStatusEl.textContent = 'Создаём комнату...';
-      const res = await apiPost('/create', {});
-      if (res.error) { lobbyStatusEl.textContent = res.error; return; }
-      playerId = res.playerId;
-      roomId = res.roomId;
-      playerColor = res.player;
-      document.getElementById('lobby').style.display = 'none';
-      document.getElementById('waiting').style.display = 'flex';
-      document.getElementById('waitingRoomId').textContent = roomId;
-      startPolling();
-    }
-
-    async function joinRoom() {
-      const code = document.getElementById('roomInput').value.trim().toLowerCase();
-      if (!code) { lobbyStatusEl.textContent = 'Введите код комнаты'; return; }
-      lobbyStatusEl.textContent = 'Подключаемся...';
-      const res = await apiPost('/join', { roomId: code });
-      if (res.error) { lobbyStatusEl.textContent = res.error; return; }
-      playerId = res.playerId;
-      roomId = res.roomId;
-      playerColor = res.player;
-      document.getElementById('lobby').style.display = 'none';
-      document.getElementById('waiting').style.display = 'none';
-      showGame();
-      gameState.board = res.board;
-      gameState.currentPlayer = res.currentPlayer;
-      resizeCanvas();
-      updateTurnDisplay();
-      setStatus('Соперник найден! Игра началась!', 'success');
-      startPolling();
-    }
-
-    function cancelRoom() {
-      stopPolling();
-      roomId = null; playerId = null;
-      document.getElementById('waiting').style.display = 'none';
-      document.getElementById('lobby').style.display = 'flex';
-    }
-
-    async function rollDice() {
-      document.getElementById('btnRoll').disabled = true;
-      const res = await apiPost('/roll', { roomId, playerId });
-      if (res.error) { setStatus(res.error, 'error'); document.getElementById('btnRoll').disabled = false; return; }
-      gameState.dice = res.dice;
-      gameState.board = res.board;
-      gameState.diceUsed = new Array(res.dice.length).fill(false);
-      legalMoves = res.legalMoves || [];
-      renderDice();
-      drawBoard();
-      document.getElementById('btnRoll').style.display = 'none';
-      selectedFrom = null;
-      if (legalMoves.length === 0) {
-        setStatus('Нет доступных ходов. Пропуск.', 'error');
-        setTimeout(() => document.getElementById('btnEndTurn').click(), 1000);
-      } else {
-        setStatus('Выберите шашку для хода', '');
-      }
-    }
-
-    function endTurn() {
-      // Force end turn by rolling again (server handles it)
-      rollDice();
-    }
-
-    function showGame() {
-      document.getElementById('lobby').style.display = 'none';
-      document.getElementById('waiting').style.display = 'none';
-      document.getElementById('game').style.display = 'block';
-      document.getElementById('gameRoomId').textContent = roomId;
-      document.getElementById('playerWhite').innerHTML = '\u26AA ' + (playerColor === 1 ? 'Вы' : 'Соперник');
-      document.getElementById('playerBlack').innerHTML = (playerColor === -1 ? 'Вы' : 'Соперник') + ' \u26AB';
-    }
-
-    // ============================================
-    // Init
-    // ============================================
-
-    resizeCanvas();
-  </script>
+window.addEventListener('beforeunload',()=>{poll=false;});
+</script>
 </body>
 </html>
