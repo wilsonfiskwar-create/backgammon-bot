@@ -5,210 +5,582 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Длинные нарды</title>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: #1a1a2e;
-    color: #e0e0e0;
-    min-height: 100vh;
-    overflow-x: hidden;
-    user-select: none;
-    -webkit-user-select: none;
-  }
-  .header {
-    background: linear-gradient(135deg, #16213e, #0f3460);
-    padding: 10px 14px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 2px solid #e94560;
-  }
-  .header h1 { font-size: 18px; }
-  .header h1 span { color: #e94560; }
-  .header .meta { font-size: 11px; color: #8899aa; }
-  .game-info {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 6px 14px;
-    background: #16213e;
-    font-size: 13px;
-  }
-  .panel {
-    padding: 12px;
-    background: #0f3460;
-    border-radius: 8px;
-    margin: 8px;
-    text-align: center;
-  }
-  .panel input {
-    width: 100%;
-    padding: 8px;
-    border: 1px solid #1a3a5c;
-    border-radius: 6px;
-    background: #1a1a2e;
-    color: #fff;
-    font-size: 14px;
-    margin: 4px 0;
-  }
-  .panel button {
-    padding: 8px 20px;
-    border: none;
-    border-radius: 6px;
-    background: #e94560;
-    color: white;
-    font-size: 14px;
-    font-weight: bold;
-    cursor: pointer;
-    margin: 4px;
-  }
-  .panel button.sec {
-    background: #0f3460;
-    border: 1px solid #e94560;
-  }
-  .board-wrapper { padding: 8px; max-width: 500px; margin: 0 auto; }
-  .board { background: #2a1a0a; border: 2px solid #5a3a1a; border-radius: 8px; padding: 6px; }
-  .board-row { display: flex; justify-content: center; }
-  .point {
-    flex: 1; min-height: 85px; display: flex; flex-direction: column;
-    align-items: center; justify-content: flex-end; position: relative; padding: 2px 0; cursor: pointer;
-  }
-  .point-up { flex-direction: column-reverse; justify-content: flex-start; }
-  .checker {
-    width: 20px; height: 20px; border-radius: 50%; margin: 1px 0;
-    border: 1.5px solid rgba(255,255,255,0.15); flex-shrink: 0;
-    transition: transform 0.12s;
-  }
-  .checker-w { background: radial-gradient(circle at 35% 35%, #fff, #c8c8c8); box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
-  .checker-b { background: radial-gradient(circle at 35% 35%, #555, #111); box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
-  .checker.sel { transform: scale(1.2); box-shadow: 0 0 8px #e94560; }
-  .checker.lgl { box-shadow: 0 0 6px #4CAF50; }
-  .pcount { font-size: 9px; color: #888; margin: 1px 0; }
-  .center-bar {
-    display: flex; justify-content: space-between; padding: 4px 8px;
-    background: #3a2a1a; border-top: 1px solid #5a3a1a; border-bottom: 1px solid #5a3a1a;
-  }
-  .off { text-align: center; font-size: 11px; }
-  .off .cnt { font-size: 18px; font-weight: bold; }
-  .off-w .cnt { color: #f0f0f0; }
-  .off-b .cnt { color: #e94560; }
-  .dice-area {
-    display: flex; justify-content: center; align-items: center; gap: 10px; padding: 10px; min-height: 56px;
-  }
-  .die {
-    width: 40px; height: 40px; background: #fff; color: #222; border-radius: 8px;
-    display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: bold;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-  }
-  .die.used { opacity: 0.3; }
-  .die-btn {
-    padding: 10px 28px; border: none; border-radius: 8px; background: #e94560;
-    color: white; font-size: 16px; font-weight: bold; cursor: pointer;
-  }
-  .die-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-  .msg { text-align: center; padding: 8px; font-size: 13px; color: #ffcc00; min-height: 30px; }
-  .msg.err { color: #e94560; }
-  .msg.ok { color: #4CAF50; }
-  .b-off { display: flex; justify-content: space-between; padding: 4px 14px; font-size: 11px; color: #8899aa; }
-  .b-off .cnt { font-weight: bold; font-size: 14px; }
-  .cw { color: #f0f0f0; }
-  .cb { color: #e94560; }
-  .go {
-    text-align: center; padding: 20px; background: linear-gradient(135deg, #16213e, #0f3460);
-    border-radius: 12px; margin: 10px;
-  }
-  .go h2 { font-size: 24px; color: #e94560; margin-bottom: 8px; }
-  .go button { padding: 10px 30px; border: none; border-radius: 8px; background: #e94560; color: white; font-size: 16px; cursor: pointer; margin-top: 10px; }
-  .clocks {
-    display: flex; justify-content: space-between; padding: 4px 14px;
-    background: #16213e; font-size: 13px; border-top: 1px solid #0a1628;
-  }
-  .clock {
-    font-variant-numeric: tabular-nums; letter-spacing: 1px;
-  }
-  .clock-w { color: #f0f0f0; }
-  .clock-b { color: #e94560; }
-  .clock.low { color: #ff4444; animation: blink 1s infinite; }
-  @keyframes blink { 50% { opacity: 0.4; } }
+/* ===================== RESET ===================== */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100%; overflow: hidden; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  min-height: 100vh; overflow-x: hidden; user-select: none; -webkit-user-select: none;
+}
 
+/* ===================== THEMES ===================== */
+/* --- Theme: Gold (default) --- */
+.theme-gold {
+  --bg-primary: #0a0e1a;
+  --bg-secondary: #121830;
+  --bg-tertiary: #1a2240;
+  --accent: #c9a84c;
+  --accent-glow: rgba(201,168,76,0.3);
+  --accent-dim: #a08830;
+  --danger: #c0392b;
+  --text: #e8dcc8;
+  --text-dim: #8a7e6a;
+  --board-bg: #1a0e05;
+  --board-border: #8b6914;
+  --board-inner: #2a1a0a;
+  --bar-bg: #3a2a1a;
+  --checker-w: #f5f0e8;
+  --checker-w-shadow: #d4c9b8;
+  --checker-b: #1a1510;
+  --checker-b-shadow: #0d0b08;
+  --checker-sel: #c9a84c;
+  --checker-lgl: #6abf69;
+  --clock-w: #f5f0e8;
+  --clock-b: #c9a84c;
+  --splash-overlay: rgba(10,14,26,0.85);
+  --btn-primary: linear-gradient(135deg, #c9a84c, #a08830);
+  --btn-primary-text: #0a0e1a;
+  --header-bg: linear-gradient(135deg, #0a0e1a, #121830);
+  --header-border: #c9a84c;
+  --dune-color1: #1a0e05;
+  --dune-color2: #2a1a0a;
+  --dune-color3: #0a0e1a;
+  --oasis-sun: #c9a84c;
+  --oasis-water: #1a3a5a;
+  --oasis-palm: #2a5a2a;
+  --oasis-sand: #3a2a1a;
+  --go-bg: linear-gradient(135deg, #0a0e1a, #1a2240);
+  --input-bg: #121830;
+  --input-border: #2a3060;
+  --modal-bg: rgba(0,0,0,0.7);
+}
+/* --- Theme: Sand --- */
+.theme-sand {
+  --bg-primary: #1a1008;
+  --bg-secondary: #2a1a0a;
+  --bg-tertiary: #3a2510;
+  --accent: #e8965a;
+  --accent-glow: rgba(232,150,90,0.3);
+  --accent-dim: #c07840;
+  --danger: #c0392b;
+  --text: #e8dcc8;
+  --text-dim: #8a7e6a;
+  --board-bg: #1a0e05;
+  --board-border: #c07840;
+  --board-inner: #2a1a0a;
+  --bar-bg: #3a2a1a;
+  --checker-w: #f5f0e8;
+  --checker-w-shadow: #d4c9b8;
+  --checker-b: #1a1510;
+  --checker-b-shadow: #0d0b08;
+  --checker-sel: #e8965a;
+  --checker-lgl: #5abf5a;
+  --clock-w: #f5f0e8;
+  --clock-b: #e8965a;
+  --splash-overlay: rgba(26,16,8,0.85);
+  --btn-primary: linear-gradient(135deg, #e8965a, #c07840);
+  --btn-primary-text: #1a1008;
+  --header-bg: linear-gradient(135deg, #1a1008, #2a1a0a);
+  --header-border: #e8965a;
+  --dune-color1: #2a1a0a;
+  --dune-color2: #3a2510;
+  --dune-color3: #1a1008;
+  --oasis-sun: #e8965a;
+  --oasis-water: #1a5a5a;
+  --oasis-palm: #3a7a3a;
+  --oasis-sand: #5a3a1a;
+  --go-bg: linear-gradient(135deg, #1a1008, #2a1a0a);
+  --input-bg: #2a1a0a;
+  --input-border: #4a3020;
+  --modal-bg: rgba(0,0,0,0.7);
+}
+
+/* ===================== APPLICATION LAYOUT ===================== */
+.app { 
+  width: 100%; min-height: 100vh; 
+  background: var(--bg-primary); 
+  color: var(--text);
+  display: flex; flex-direction: column;
+  position: relative;
+  transition: background 0.5s ease, color 0.5s ease;
+}
+
+/* ===================== SPLASH / HERO ===================== */
+.splash {
+  position: fixed; inset: 0; z-index: 100;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: var(--bg-primary);
+  transition: opacity 0.8s ease, transform 0.8s ease;
+}
+.splash.hidden { opacity: 0; transform: scale(1.05); pointer-events: none; }
+
+/* Animated dunes background */
+.dunes-bg {
+  position: absolute; inset: 0; overflow: hidden;
+  z-index: 0;
+}
+.dune {
+  position: absolute; bottom: 0; left: 0; width: 200%; height: 100%;
+  border-radius: 50% 50% 0 0;
+  animation: duneShift 8s ease-in-out infinite alternate;
+}
+.dune-1 {
+  height: 35%; background: var(--dune-color1);
+  animation-duration: 7s; opacity: 0.6;
+}
+.dune-2 {
+  height: 25%; background: var(--dune-color2);
+  animation-duration: 9s; animation-delay: -2s; opacity: 0.5;
+}
+.dune-3 {
+  height: 15%; background: var(--dune-color3);
+  animation-duration: 11s; animation-delay: -4s; opacity: 0.4;
+}
+@keyframes duneShift {
+  0% { transform: translateX(-5%) scaleY(1); }
+  50% { transform: translateX(0%) scaleY(1.08); }
+  100% { transform: translateX(5%) scaleY(1); }
+}
+
+/* Stars / dust particles */
+.particle {
+  position: absolute; width: 3px; height: 3px;
+  background: var(--accent); border-radius: 50%;
+  opacity: 0; animation: particleFloat 4s ease-in-out infinite;
+}
+@keyframes particleFloat {
+  0%, 100% { opacity: 0; transform: translateY(0) scale(0); }
+  50% { opacity: 0.6; transform: translateY(-20px) scale(1); }
+}
+
+/* Oasis SVG container */
+.oasis-container {
+  position: relative; z-index: 1;
+  width: 200px; height: 140px;
+  margin-bottom: 16px;
+}
+.oasis-container svg { width: 100%; height: 100%; }
+
+/* Splash content */
+.splash-content {
+  position: relative; z-index: 2;
+  text-align: center; padding: 20px;
+}
+.splash-title {
+  font-size: 28px; font-weight: 800; letter-spacing: 4px;
+  margin-bottom: 4px;
+  color: var(--accent); text-shadow: 0 2px 20px var(--accent-glow);
+}
+.splash-sub {
+  font-size: 12px; color: var(--text-dim); letter-spacing: 6px;
+  margin-bottom: 28px; text-transform: uppercase;
+}
+.splash-btn {
+  display: block; width: 220px; margin: 8px auto; padding: 12px 24px;
+  border: none; border-radius: 8px;
+  background: var(--btn-primary); color: var(--btn-primary-text);
+  font-size: 15px; font-weight: 700; cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 4px 15px var(--accent-glow);
+}
+.splash-btn:active { transform: scale(0.96); }
+.splash-btn-sec {
+  background: transparent; color: var(--text); border: 1px solid var(--accent);
+  box-shadow: none;
+}
+.splash-input {
+  width: 220px; padding: 10px 14px; margin: 6px auto;
+  border: 1px solid var(--accent-dim); border-radius: 6px;
+  background: var(--input-bg); color: var(--text);
+  font-size: 14px; text-align: center; outline: none;
+}
+.splash-input::placeholder { color: var(--text-dim); font-size: 12px; }
+
+/* Theme toggle on splash */
+.theme-toggle {
+  position: absolute; top: 16px; right: 16px; z-index: 5;
+  background: var(--bg-secondary); border: 1px solid var(--accent-dim);
+  color: var(--text); border-radius: 20px; padding: 6px 14px;
+  font-size: 11px; cursor: pointer; opacity: 0.6;
+  transition: opacity 0.2s;
+}
+.theme-toggle:hover { opacity: 1; }
+
+/* ===================== GAME UI ===================== */
+.game-header {
+  background: var(--header-bg);
+  padding: 8px 12px;
+  display: flex; justify-content: space-between; align-items: center;
+  border-bottom: 1px solid var(--header-border);
+  flex-shrink: 0;
+}
+.game-header h1 { font-size: 16px; color: var(--accent); }
+.game-header .meta { font-size: 10px; color: var(--text-dim); }
+.game-bar {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 4px 12px; background: var(--bg-secondary);
+  font-size: 12px; flex-shrink: 0;
+}
+.game-bar .label { color: var(--text-dim); }
+.game-bar .player-name { font-weight: 600; }
+
+/* Clocks */
+.clocks {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 4px 12px; background: var(--bg-secondary);
+  font-size: 12px; border-top: 1px solid var(--bg-tertiary);
+  flex-shrink: 0;
+}
+.clock-group { display: flex; align-items: center; gap: 4px; }
+.clock-icon { font-size: 14px; }
+.clock-value {
+  font-variant-numeric: tabular-nums; letter-spacing: 1px;
+  font-size: 14px; font-weight: 600;
+  transition: color 0.3s;
+}
+.clock-value.white { color: var(--clock-w); }
+.clock-value.black { color: var(--clock-b); }
+.clock-value.low { color: var(--danger) !important; animation: blink 0.8s infinite; }
+.clock-value.move { color: var(--accent); }
+@keyframes blink { 50% { opacity: 0.3; } }
+
+/* Bear-off info */
+.bear-off {
+  display: flex; justify-content: space-between;
+  padding: 3px 14px; font-size: 10px; color: var(--text-dim);
+  background: var(--bg-primary); flex-shrink: 0;
+}
+.bear-off .cnt { font-weight: 700; font-size: 13px; }
+.bear-off .w-cnt { color: var(--clock-w); }
+.bear-off .b-cnt { color: var(--clock-b); }
+
+/* Board */
+.board-wrapper {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  padding: 4px; overflow: hidden;
+  min-height: 0; /* important for flex shrink */
+}
+.board {
+  width: 100%; max-width: 420px;
+  background: var(--board-bg);
+  border: 2px solid var(--board-border);
+  border-radius: 8px; padding: 4px;
+}
+.board-row { display: flex; }
+.point {
+  flex: 1; min-height: 70px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: flex-end;
+  padding: 1px 0; cursor: pointer; position: relative;
+  transition: background 0.15s;
+}
+.point-up { flex-direction: column-reverse; justify-content: flex-start; }
+.point:active { background: rgba(255,255,255,0.03); }
+.checker {
+  width: 16px; height: 16px; border-radius: 50%;
+  margin: 1px 0; flex-shrink: 0;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.checker-w {
+  background: radial-gradient(circle at 35% 35%, var(--checker-w), var(--checker-w-shadow));
+  box-shadow: 0 1px 2px rgba(0,0,0,0.4), inset 0 -1px 2px rgba(0,0,0,0.15);
+}
+.checker-b {
+  background: radial-gradient(circle at 35% 35%, #555, var(--checker-b));
+  box-shadow: 0 1px 2px rgba(0,0,0,0.4), inset 0 -1px 2px rgba(0,0,0,0.2);
+}
+.checker.sel { transform: scale(1.25); box-shadow: 0 0 8px var(--checker-sel), 0 0 20px var(--accent-glow); }
+.checker.lgl { box-shadow: 0 0 6px var(--checker-lgl); cursor: pointer; }
+.pcount { font-size: 8px; color: var(--text-dim); }
+
+/* Center bar */
+.center-bar {
+  display: flex; justify-content: space-between;
+  padding: 3px 6px; background: var(--bar-bg);
+  border-top: 1px solid var(--board-border);
+  border-bottom: 1px solid var(--board-border);
+}
+.off { text-align: center; font-size: 10px; color: var(--text-dim); }
+.off .cnt { font-size: 14px; font-weight: 700; }
+.off-w .cnt { color: var(--clock-w); }
+.off-b .cnt { color: var(--clock-b); }
+
+/* Dice area */
+.dice-area {
+  display: flex; justify-content: center; align-items: center;
+  gap: 8px; padding: 6px; min-height: 48px;
+  flex-shrink: 0;
+  position: relative;
+}
+.dice-display { display: flex; gap: 8px; align-items: center; }
+.die-svg { width: 36px; height: 36px; border-radius: 6px; }
+.die-svg.used { opacity: 0.3; }
+.die-svg.animating { animation: diceRoll 0.4s ease-out; }
+@keyframes diceRoll {
+  0% { transform: rotateX(0deg) rotateZ(0deg); opacity: 0.5; }
+  50% { transform: rotateX(360deg) rotateZ(180deg); opacity: 1; }
+  100% { transform: rotateX(720deg) rotateZ(360deg); opacity: 1; }
+}
+.die-btn {
+  padding: 8px 24px; border: none; border-radius: 8px;
+  background: var(--btn-primary); color: var(--btn-primary-text);
+  font-size: 15px; font-weight: 700; cursor: pointer;
+  box-shadow: 0 3px 12px var(--accent-glow);
+  transition: transform 0.12s;
+}
+.die-btn:active { transform: scale(0.95); }
+.die-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.waiting-text { color: var(--text-dim); font-size: 13px; }
+
+/* Message */
+.msg {
+  text-align: center; padding: 6px; font-size: 12px; min-height: 22px;
+  color: var(--accent); flex-shrink: 0;
+}
+.msg.err { color: var(--danger); }
+.msg.ok { color: var(--checker-lgl); }
+
+/* ===================== GAME OVER ===================== */
+.go-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  background: var(--modal-bg);
+  display: flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.5s ease;
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.go-card {
+  background: var(--go-bg);
+  border: 1px solid var(--accent);
+  border-radius: 16px; padding: 32px 24px;
+  text-align: center; max-width: 280px; width: 90%;
+  box-shadow: 0 10px 40px var(--accent-glow);
+  animation: goPop 0.4s ease;
+}
+@keyframes goPop {
+  0% { transform: scale(0.8); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.go-trophy { font-size: 48px; margin-bottom: 8px; }
+.go-title { font-size: 22px; color: var(--accent); font-weight: 800; margin-bottom: 4px; }
+.go-sub { font-size: 13px; color: var(--text-dim); margin-bottom: 20px; }
+.go-btn {
+  padding: 10px 32px; border: none; border-radius: 8px;
+  background: var(--btn-primary); color: var(--btn-primary-text);
+  font-size: 14px; font-weight: 700; cursor: pointer;
+}
+
+/* ===================== RESPONSIVE ===================== */
+@media (max-width: 400px) {
+  .splash-title { font-size: 22px; }
+  .splash-btn, .splash-input { width: 200px; }
+  .oasis-container { width: 160px; height: 112px; }
+  .point { min-height: 58px; }
+  .checker { width: 14px; height: 14px; }
+  .die-svg { width: 30px; height: 30px; }
+  .game-header h1 { font-size: 14px; }
+}
+
+/* ===================== SCROLL SAFETY ===================== */
+.app.game-active { overflow-y: auto; }
+.app.game-active body { overflow-y: auto; }
 </style>
 </head>
 <body>
+<div class="app theme-gold" id="app">
 
-<div class="header">
-  <h1>🎲 Д<span>Л</span>ИННЫЕ Н<span>А</span>РДЫ</h1>
-  <div class="meta" id="roomMeta"></div>
-</div>
-<div class="game-info">
-  <span id="playerLabel">—</span>
-  <span id="turnLabel">Ожидание...</span>
-  <span id="opponentLabel">—</span>
-</div>
-
-<div id="roomPanel" class="panel">
-  <div style="margin-bottom:6px;font-size:13px;color:#8899aa;">Комната</div>
-  <button onclick="createRoom()">🎲 Создать комнату</button>
-  <div style="margin:6px 0;color:#555;">или</div>
-  <input id="roomInput" placeholder="Введите код комнаты" onkeydown="if(event.key==='Enter')joinRoom()">
-  <button class="sec" onclick="joinRoom()">🔗 Присоединиться</button>
-</div>
-
-<div id="gameArea" style="display:none">
-  <div class="clocks">
-    <span>⚪ <span class="clock clock-w" id="clockW">3:00</span></span>
-    <span>⏱️ <span class="clock" id="clockMove">0:20</span></span>
-    <span>⚫ <span class="clock clock-b" id="clockB">3:00</span></span>
+<!-- ==================== SPLASH SCREEN ==================== -->
+<div class="splash" id="splash">
+  <!-- Animated Dunes -->
+  <div class="dunes-bg">
+    <div class="dune dune-1"></div>
+    <div class="dune dune-2"></div>
+    <div class="dune dune-3"></div>
   </div>
-  <div class="b-off">
-    <span>Выбросили: <span class="cnt cw" id="bw">0</span></span>
-    <span>Выбросили: <span class="cnt cb" id="bb">0</span></span>
+
+  <!-- Theme Toggle -->
+  <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn">🏜 Песок</button>
+
+  <!-- Oasis SVG -->
+  <div class="oasis-container" id="oasisSvg">
+    <svg viewBox="0 0 200 140" xmlns="http://www.w3.org/2000/svg">
+      <!-- Sun -->
+      <circle cx="160" cy="30" r="18" fill="var(--oasis-sun)" opacity="0.9">
+        <animate attributeName="r" values="18;20;18" dur="3s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="160" cy="30" r="22" fill="var(--oasis-sun)" opacity="0.15">
+        <animate attributeName="r" values="22;28;22" dur="3s" repeatCount="indefinite"/>
+      </circle>
+      <!-- Water -->
+      <ellipse cx="85" cy="110" rx="65" ry="14" fill="var(--oasis-water)" opacity="0.6">
+        <animate attributeName="rx" values="65;68;65" dur="4s" repeatCount="indefinite"/>
+      </ellipse>
+      <!-- Palm tree left -->
+      <g transform="translate(50,40)">
+        <rect x="12" y="10" width="7" height="55" rx="3" fill="var(--oasis-palm)"/>
+        <path d="M15,15 Q-10,0 -25,15" stroke="var(--oasis-palm)" stroke-width="3" fill="none"/>
+        <path d="M15,15 Q40,-5 55,10" stroke="var(--oasis-palm)" stroke-width="3" fill="none"/>
+        <path d="M15,15 Q-5,30 -20,35" stroke="var(--oasis-palm)" stroke-width="2" fill="none"/>
+        <path d="M15,15 Q35,25 50,30" stroke="var(--oasis-palm)" stroke-width="2" fill="none"/>
+      </g>
+      <!-- Palm tree right -->
+      <g transform="translate(120,45)">
+        <rect x="10" y="10" width="6" height="50" rx="3" fill="var(--oasis-palm)"/>
+        <path d="M13,15 Q-8,0 -20,15" stroke="var(--oasis-palm)" stroke-width="3" fill="none"/>
+        <path d="M13,15 Q35,-5 48,10" stroke="var(--oasis-palm)" stroke-width="3" fill="none"/>
+        <path d="M13,15 Q-3,30 -15,35" stroke="var(--oasis-palm)" stroke-width="2" fill="none"/>
+        <path d="M13,15 Q30,25 42,30" stroke="var(--oasis-palm)" stroke-width="2" fill="none"/>
+      </g>
+      <!-- Small dunes in oasis -->
+      <ellipse cx="40" cy="125" rx="25" ry="6" fill="var(--oasis-sand)" opacity="0.3">
+        <animate attributeName="rx" values="25;28;25" dur="5s" repeatCount="indefinite"/>
+      </ellipse>
+    </svg>
+  </div>
+
+  <div class="splash-content">
+    <div class="splash-title">ДЛИННЫЕ НАРДЫ</div>
+    <div class="splash-sub">Long Backgammon</div>
+
+    <button class="splash-btn" onclick="createRoom()">🎲 Создать комнату</button>
+    <div style="height:6px"></div>
+    <input class="splash-input" id="roomInput" placeholder="Код комнаты" onkeydown="if(event.key==='Enter')joinRoom()">
+    <button class="splash-btn splash-btn-sec" onclick="joinRoom()">🔗 Присоединиться</button>
+  </div>
+</div>
+
+<!-- ==================== GAME AREA ==================== -->
+<div id="gameArea" style="display:none">
+  <div class="game-header">
+    <h1>⬡ ДЛИННЫЕ НАРДЫ</h1>
+    <div class="meta" id="roomMeta"></div>
+  </div>
+  <div class="game-bar">
+    <span class="label" id="playerLabel">—</span>
+    <span class="label" id="turnLabel">Ожидание...</span>
+    <span class="label" id="opponentLabel">—</span>
+  </div>
+  <div class="clocks">
+    <div class="clock-group">
+      <span class="clock-icon">⚪</span>
+      <span class="clock-value white" id="clockW">3:00</span>
+    </div>
+    <div class="clock-group">
+      <span class="clock-icon">⏱</span>
+      <span class="clock-value move" id="clockMove">0:20</span>
+    </div>
+    <div class="clock-group">
+      <span class="clock-value black" id="clockB">3:00</span>
+      <span class="clock-icon">⚫</span>
+    </div>
+  </div>
+  <div class="bear-off">
+    <span>Сняли: <span class="cnt w-cnt" id="bw">0</span></span>
+    <span>Сняли: <span class="cnt b-cnt" id="bb">0</span></span>
   </div>
   <div class="board-wrapper"><div class="board" id="board"></div></div>
-  <div class="dice-area" id="diceArea"><div id="diceDisplay"></div></div>
+  <div class="dice-area">
+    <div class="dice-display" id="diceDisplay"></div>
+  </div>
   <div class="msg" id="message"></div>
 </div>
 
-<div id="gameOverPanel" style="display:none" class="go">
-  <h2 id="winnerText">🏆 Победитель!</h2>
-  <button onclick="location.reload()">🔄 Новая игра</button>
+<!-- ==================== GAME OVER OVERLAY ==================== -->
+<div id="gameOver" style="display:none" class="go-overlay">
+  <div class="go-card">
+    <div class="go-trophy" id="trophyIcon">🏆</div>
+    <div class="go-title" id="winnerText">Победа!</div>
+    <div class="go-sub" id="winnerSub">Вы выиграли партию</div>
+    <button class="go-btn" onclick="location.reload()">🔄 Новая игра</button>
+  </div>
+</div>
+
 </div>
 
 <script>
-// ========== GAME STATE ==========
+// ===================== SVG DICE GENERATOR =====================
+const DICE_FACES = {
+  1: [[0,0,0],[0,1,0],[0,0,0]],
+  2: [[0,0,1],[0,0,0],[1,0,0]],
+  3: [[0,0,1],[0,1,0],[1,0,0]],
+  4: [[1,0,1],[0,0,0],[1,0,1]],
+  5: [[1,0,1],[0,1,0],[1,0,1]],
+  6: [[1,0,1],[1,0,1],[1,0,1]]
+};
+
+function renderDieSVG(value, used) {
+  const dots = DICE_FACES[value] || DICE_FACES[1];
+  const size = 36;
+  const bg = used ? '#555' : '#f5f0e8';
+  const dotColor = used ? '#333' : '#1a1510';
+  const border = used ? '#444' : '#c9a84c';
+  let dotsSVG = '';
+  for (let r = 0; r < 3; r++) {
+    for (let c = 0; c < 3; c++) {
+      if (dots[r][c]) {
+        const cx = 9 + c * 9;
+        const cy = 9 + r * 9;
+        dotsSVG += `<circle cx="${cx}" cy="${cy}" r="3" fill="${dotColor}"/>`;
+      }
+    }
+  }
+  return `<svg class="die-svg${used ? ' used' : ''}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
+    <rect x="0" y="0" width="${size}" height="${size}" rx="5" fill="${bg}" stroke="${border}" stroke-width="1.5"/>
+    ${dotsSVG}
+  </svg>`;
+}
+
+// ===================== THEME SYSTEM =====================
+let currentTheme = 'gold';
+function toggleTheme() {
+  const app = document.getElementById('app');
+  const btn = document.getElementById('themeBtn');
+  if (currentTheme === 'gold') {
+    app.className = 'app theme-sand';
+    btn.textContent = '🟦 Золото';
+    currentTheme = 'sand';
+  } else {
+    app.className = 'app theme-gold';
+    btn.textContent = '🏜 Песок';
+    currentTheme = 'gold';
+  }
+}
+
+// ===================== GAME STATE =====================
 let pid = null, rid = null, me = null, state = null, sel = null, poll = false, seq = 0, moves = [];
 const BASE = window.location.origin;
 
-function gs(d) { // normalize game state (handles board.white|black vs flat white|black)
+function gs(d) {
   const s = d && d.board ? d.board : d;
-  return s ? { w: s.white||[], b: s.black||[], cp: s.currentPlayer||1, di: s.dice||[], du: s.diceUsed||[], go: s.gameOver, wn: s.winner } : { w:[], b:[], cp:1, di:[], du:[] };
+  return s ? { w: s.white||[], b: s.black||[], cp: s.currentPlayer||1, di: s.dice||[], du: s.diceUsed||[], go: s.gameOver, wn: s.winner, whiteClock: s.whiteClock, blackClock: s.blackClock, rollTimestamp: s.rollTimestamp } : { w:[], b:[], cp:1, di:[], du:[], whiteClock:180000, blackClock:180000, rollTimestamp:0 };
 }
 
-// ========== ROOM ==========
+// ===================== ROOM =====================
 async function createRoom() {
   const r = await (await fetch(BASE+'/api/create',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})).json();
   pid = r.playerId; rid = r.roomId; me = r.player;
   document.getElementById('roomMeta').textContent = 'Комната: '+rid;
-  document.getElementById('roomPanel').style.display='none';
-  document.getElementById('gameArea').style.display='block';
-  document.getElementById('playerLabel').textContent = me===1 ? '⚪ Белые' : '⚫ Чёрные';
-  document.getElementById('turnLabel').textContent = 'Ожидание игрока...';
+  enterGame();
   seq=0; startPoll();
 }
-
 async function joinRoom() {
   const ridInput = document.getElementById('roomInput').value.trim();
   if (!ridInput) return;
   const r = await (await fetch(BASE+'/api/join',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({roomId:ridInput})})).json();
   pid=r.playerId; rid=r.roomId; me=r.player;
   document.getElementById('roomMeta').textContent = 'Комната: '+rid;
-  document.getElementById('roomPanel').style.display='none';
-  document.getElementById('gameArea').style.display='block';
-  document.getElementById('playerLabel').textContent = me===1 ? '⚪ Белые' : '⚫ Чёрные';
+  enterGame();
   seq=0; startPoll();
   applyState(r);
 }
+function enterGame() {
+  document.getElementById('splash').classList.add('hidden');
+  document.getElementById('gameArea').style.display='block';
+  document.getElementById('playerLabel').textContent = me===1 ? '⚪ Белые' : '⚫ Чёрные';
+  document.getElementById('turnLabel').textContent = 'Ожидание соперника...';
+}
 
-// ========== POLL ==========
+// ===================== POLL =====================
 function startPoll() { poll=true; pollState(); }
 async function pollState() {
   if (!rid||!pid) return;
@@ -219,13 +591,12 @@ async function pollState() {
     setTimeout(pollState, r.roomState==='finished' ? 2000 : 1000);
   } catch(e) { setTimeout(pollState,2000); }
 }
-
 function applyEvent(e) {
   if (['game_start','opponent_joined','room_joined','dice_rolled','move_made','move_again','turn_changed','turn_skipped'].includes(e.type)) applyState(e);
   if (e.type === 'game_over') { applyState(e); showGO(e.winner||e.board?.winner); }
 }
 
-// ========== RENDER ==========
+// ===================== RENDER =====================
 function applyState(d) {
   if (!d) return;
   state = d;
@@ -254,15 +625,23 @@ function applyState(d) {
   // Dice
   const dd = document.getElementById('diceDisplay');
   if (!s.di || s.di.length===0) {
-    dd.innerHTML = myTurn() ? '<button class="die-btn" onclick="rollDice()">🎲 Бросить кости</button>' : '<span style="color:#8899aa;">Ожидание...</span>';
+    dd.innerHTML = myTurn()
+      ? '<button class="die-btn" onclick="rollDice()">🎲 Бросить</button>'
+      : '<span class="waiting-text">Ожидание броска...</span>';
   } else {
-    let h=''; const faces=['','⚀','⚁','⚂','⚃','⚄','⚅'];
-    for(let i=0;i<s.di.length;i++) h+='<div class="die'+(s.du&&s.du[i]?' used':'')+'">'+(faces[s.di[i]]||s.di[i])+'</div>';
+    let h='';
+    for(let i=0;i<s.di.length;i++) h+=renderDieSVG(s.di[i], s.du&&s.du[i]);
     dd.innerHTML = h;
+    // Animate dice on roll
+    dd.querySelectorAll('.die-svg:not(.used)').forEach(el => el.classList.add('animating'));
   }
 
-  document.getElementById('turnLabel').textContent = myTurn() ? (s.di.length ? 'Ваш ход' : 'Бросьте кости') : 'Ход соперника';
-  document.getElementById('turnLabel').style.color = myTurn() ? (me===1?'#f0f0f0':'#e94560') : '#8899aa';
+  document.getElementById('turnLabel').textContent = myTurn()
+    ? (s.di && s.di.length ? 'Ваш ход' : 'Ваш бросок')
+    : 'Ход соперника';
+  document.getElementById('turnLabel').style.color = myTurn()
+    ? (me===1 ? 'var(--clock-w)' : 'var(--clock-b)')
+    : 'var(--text-dim)';
 }
 
 function mkPt(n, w, b, up) {
@@ -275,15 +654,14 @@ function mkPt(n, w, b, up) {
   return d;
 }
 
-// ========== MOVES ==========
+// ===================== MOVES =====================
 async function rollDice() {
   if (!rid||!pid) return;
   const r = await (await fetch(BASE+'/api/roll',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({roomId:rid,playerId:pid})})).json();
   moves = r.legalMoves||[];
   state = r; applyState(r);
-  showMsg(moves.length ? 'Бросайте!' : 'Нет ходов', moves.length?'':'err');
+  showMsg(moves.length ? 'Ваш ход' : 'Нет ходов — ход переходит', moves.length?'':'err');
 }
-
 function onClick(pt, col) {
   if (!myTurn()||!state) return;
   const s = gs(state);
@@ -292,19 +670,17 @@ function onClick(pt, col) {
     const arr = col===1 ? s.w : s.b;
     if (!arr||!arr[pt]) { showMsg('Нет ваших шашек','err'); return; }
     sel = pt; applyState(state);
-    // Highlight legal destinations
     const dests = moves.filter(m=>m.from===pt).map(m=>m.to);
     document.querySelectorAll('.point').forEach(el => {
       if (dests.includes(parseInt(el.dataset.pt))) el.querySelectorAll('.checker').forEach(c => c.classList.add('lgl'));
     });
-    showMsg('Выберите куда',''); return;
+    showMsg('Куда?',''); return;
   }
   const from = sel; sel = null;
   const mv = moves.find(m => m.from===from && m.to===pt);
   if (!mv) { showMsg('Недопустимо','err'); applyState(state); return; }
   doMove(from, pt);
 }
-
 async function doMove(from, to) {
   const r = await (await fetch(BASE+'/api/move',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({roomId:rid,playerId:pid,from,to})})).json();
   state = r; applyState(r);
@@ -312,60 +688,69 @@ async function doMove(from, to) {
   moves = r.legalMoves||[];
   showMsg(r.moveAgain||r.remainingDice ? 'Ещё ход!' : (r.turnChanged||r.turnSkipped ? '' : ''), '');
 }
-
 function myTurn() { const s=gs(state); return s.cp===me; }
 
-// Timer update
-let timerInterval = null;
+// ===================== TIMERS =====================
+let timerInt = null;
 function startTimer() {
-  if (timerInterval) return;
-  timerInterval = setInterval(updateClocks, 500);
+  if (timerInt) return;
+  timerInt = setInterval(updateClocks, 500);
 }
 function updateClocks() {
-  const s = gs(state);
   const cw = document.getElementById('clockW');
   const cb = document.getElementById('clockB');
   const cm = document.getElementById('clockMove');
-
-  // Get real clock from server state (fallback to displayed)
-  const wClock = (state && state.board ? state.board.whiteClock : (state ? state.whiteClock : 180000)) || 180000;
-  const bClock = (state && state.board ? state.board.blackClock : (state ? state.blackClock : 180000)) || 180000;
-  const rollTime = (state && state.board ? state.board.rollTimestamp : (state ? state.rollTimestamp : 0)) || 0;
-
-  cw.textContent = formatClock(wClock);
-  cb.textContent = formatClock(bClock);
-  cw.className = 'clock clock-w' + (wClock < 30000 ? ' low' : '');
-  cb.className = 'clock clock-b' + (bClock < 30000 ? ' low' : '');
-
-  // Per-move timer
+  const s = gs(state);
+  const wClock = s.whiteClock || 180000;
+  const bClock = s.blackClock || 180000;
+  const rollTime = s.rollTimestamp || 0;
+  cw.textContent = fmtClock(wClock);
+  cb.textContent = fmtClock(bClock);
+  cw.className = 'clock-value white' + (wClock < 30000 ? ' low' : '');
+  cb.className = 'clock-value black' + (bClock < 30000 ? ' low' : '');
   if (rollTime > 0 && s.di && s.di.length > 0) {
     const elapsed = Date.now() - rollTime;
     const moveTime = Math.max(0, 20000 - elapsed);
-    cm.textContent = formatClock(moveTime);
-    cm.className = 'clock' + (moveTime < 5000 ? ' low' : '');
+    cm.textContent = fmtClock(moveTime);
+    cm.className = 'clock-value move' + (moveTime < 5000 ? ' low' : '');
   } else {
     cm.textContent = '0:20';
-    cm.className = 'clock';
+    cm.className = 'clock-value move';
   }
 }
-function formatClock(ms) {
+function fmtClock(ms) {
   if (ms <= 0) return '0:00';
   const sec = Math.ceil(ms / 1000);
-  const m = Math.floor(sec / 60);
-  const s = sec % 60;
-  return m + ':' + (s < 10 ? '0' : '') + s;
+  return Math.floor(sec / 60) + ':' + (sec % 60 < 10 ? '0' : '') + (sec % 60);
 }
-
-// Start timer when game area shows
-const origCreateRoom = createRoom; createRoom = function() { startTimer(); return origCreateRoom.apply(this, arguments); };
-const origJoinRoom = joinRoom; joinRoom = function() { startTimer(); return origJoinRoom.apply(this, arguments); };
+// Override createRoom/joinRoom to start timer
+const origCreate = createRoom; createRoom = function() { startTimer(); return origCreate.apply(this, arguments); };
+const origJoin = joinRoom; joinRoom = function() { startTimer(); return origJoin.apply(this, arguments); };
 
 function showMsg(t,type) { const e=document.getElementById('message'); e.textContent=t; e.className='msg'+(type?' '+type:''); }
 function showGO(winner) {
   document.getElementById('gameArea').style.display='none';
-  document.getElementById('gameOverPanel').style.display='block';
-  document.getElementById('winnerText').textContent = winner===me ? '🏆 Победа!' : '😞 Проиграли';
+  document.getElementById('gameOver').style.display='flex';
+  document.getElementById('trophyIcon').textContent = winner===me ? '🏆' : '😔';
+  document.getElementById('winnerText').textContent = winner===me ? 'Победа!' : 'Поражение';
+  document.getElementById('winnerSub').textContent = winner===me ? 'Вы выиграли партию!' : 'Партию выиграл соперник';
 }
+
+// ===================== PARTICLE SYSTEM =====================
+(function() {
+  const container = document.querySelector('.dunes-bg');
+  if (!container) return;
+  for (let i = 0; i < 15; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.style.left = (5 + Math.random() * 90) + '%';
+    p.style.top = (5 + Math.random() * 40) + '%';
+    p.style.animationDelay = (Math.random() * 5) + 's';
+    p.style.animationDuration = (3 + Math.random() * 3) + 's';
+    p.style.width = p.style.height = (1 + Math.random() * 2) + 'px';
+    container.appendChild(p);
+  }
+})();
 
 window.addEventListener('beforeunload',()=>{poll=false;});
 </script>
